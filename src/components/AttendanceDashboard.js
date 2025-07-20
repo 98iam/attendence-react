@@ -73,16 +73,16 @@ export default function AttendanceDashboard() {
   const startAttendanceMode = () => {
     // Sort students by roll number before starting attendance
     const sortedStudents = [...students].sort((a, b) => {
-      const rollA = parseInt(a.rollNumber) || 0
-      const rollB = parseInt(b.rollNumber) || 0
-      return rollA - rollB
-    })
-    setSwipeStudents(sortedStudents)
-    setHistory([])
-    setAttendance({})
-    setDragState({ isDragging: false, deltaY: 0, startY: 0 })
-    setShowAttendanceMode(true)
-  }
+      const rollA = parseInt(a.rollNumber, 10) || 0;
+      const rollB = parseInt(b.rollNumber, 10) || 0;
+      return rollA - rollB;
+    });
+    setSwipeStudents(sortedStudents);
+    setHistory([]);
+    setAttendance({});
+    setDragState({ isDragging: false, deltaY: 0, startY: 0 });
+    setShowAttendanceMode(true);
+  };
 
   const handleSwipe = useCallback((status) => {
     if (swipeStudents.length === 0) return;
@@ -323,63 +323,34 @@ export default function AttendanceDashboard() {
               </div>
             </CardContent>
           </Card>
-        </div>  
-      {/* Absence Notifications */}
+        </div>
+        {/* Absence Notifications */}
         {absenceNotifications.length > 0 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-orange-500" />
-              Recent Absences
-            </h2>
-            <div className="grid gap-4">
-              <AnimatePresence>
-                {absenceNotifications.map((notification) => {
-                  const risk = getRiskLevel(notification.consecutiveAbsences)
-                  return (
-                    <motion.div
-                      key={notification.studentId}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                    >
-                      <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                                  <span className="text-sm font-semibold">
-                                    {notification.studentName.split(' ').map(n => n[0]).join('')}
-                                  </span>
-                                </div>
-                                <div>
-                                  <p className="font-semibold text-gray-900">{notification.studentName}</p>
-                                  <p className="text-sm text-gray-600">Roll No: {notification.rollNumber}</p>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm text-gray-600">{getDaysAgoText(notification.daysSinceAbsent)}</p>
-                              <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${risk.color}`}>
-                                {risk.level}
-                              </span>
-                            </div>
-                          </div>
-                          {notification.consecutiveAbsences > 1 && (
-                            <div className="mt-3 p-3 bg-red-50 rounded-lg">
-                              <p className="text-sm text-red-800">
-                                ⚠️ {notification.consecutiveAbsences} consecutive absences
-                              </p>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  )
-                })}
-              </AnimatePresence>
-            </div>
-          </div>
+          <Card className="bg-red-50 border-red-200">
+            <CardHeader>
+              <CardTitle className="text-red-800 flex items-center gap-2">
+                <AlertCircle className="h-5 w-5" />
+                Absentee Alerts
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {absenceNotifications.map((notification) => (
+                  <div key={notification.studentId} className="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm">
+                    <div>
+                      <p className="font-semibold text-gray-900">{notification.studentName}</p>
+                      <p className="text-sm text-gray-600">Roll No: {notification.rollNumber}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-red-600">
+                        {notification.consecutiveAbsences} Day{notification.consecutiveAbsences > 1 ? 's' : ''} Absent
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Class Overview */}
