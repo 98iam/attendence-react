@@ -1,33 +1,18 @@
 import { useState, useMemo } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from "/components/ui/card"
-import { Button } from "/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
+import { Button } from "./ui/button"
 import { motion, AnimatePresence } from 'framer-motion'
 import { Calendar, ChevronLeft, ChevronRight, Download, Filter, Search, User, Clock, Check, X } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns'
 
-interface AttendanceRecord {
-  date: string
-  status: 'present' | 'absent' | 'late' | 'excused'
-  studentId: string
-  studentName: string
-  rollNumber: string
-}
-
-interface Student {
-  id: string
-  name: string
-  rollNumber: string
-  avatar: string
-}
-
 export default function AttendanceHistory() {
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [selectedStudent, setSelectedStudent] = useState<string>('all')
+  const [selectedStudent, setSelectedStudent] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
-  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar')
+  const [viewMode, setViewMode] = useState('calendar')
 
   // Mock data - in real app, this would come from your backend
-  const students: Student[] = [
+  const students = [
     { id: '1', name: 'Alice Johnson', rollNumber: '001', avatar: 'AJ' },
     { id: '2', name: 'Bob Smith', rollNumber: '002', avatar: 'BS' },
     { id: '3', name: 'Charlie Brown', rollNumber: '003', avatar: 'CB' },
@@ -36,7 +21,7 @@ export default function AttendanceHistory() {
     { id: '6', name: 'Fiona Green', rollNumber: '006', avatar: 'FG' },
   ]
 
-  const attendanceRecords: AttendanceRecord[] = [
+  const attendanceRecords = [
     // Alice's records
     { date: '2024-01-15', status: 'present', studentId: '1', studentName: 'Alice Johnson', rollNumber: '001' },
     { date: '2024-01-16', status: 'present', studentId: '1', studentName: 'Alice Johnson', rollNumber: '001' },
@@ -70,7 +55,7 @@ export default function AttendanceHistory() {
   const monthEnd = endOfMonth(currentDate)
   const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd })
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status) => {
     switch (status) {
       case 'present': return 'bg-green-500'
       case 'absent': return 'bg-red-500'
@@ -80,7 +65,7 @@ export default function AttendanceHistory() {
     }
   }
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status) => {
     switch (status) {
       case 'present': return <Check className="h-3 w-3 text-white" />
       case 'absent': return <X className="h-3 w-3 text-white" />
@@ -90,7 +75,7 @@ export default function AttendanceHistory() {
     }
   }
 
-  const getAttendanceForDate = (date: Date, studentId: string) => {
+  const getAttendanceForDate = (date, studentId) => {
     const dateStr = format(date, 'yyyy-MM-dd')
     const records = attendanceRecords.filter(
       record => record.date === dateStr && (studentId === 'all' || record.studentId === studentId)
@@ -98,7 +83,7 @@ export default function AttendanceHistory() {
     return records
   }
 
-  const getDaySummary = (date: Date) => {
+  const getDaySummary = (date) => {
     const records = getAttendanceForDate(date, selectedStudent)
     if (records.length === 0) return null
     
@@ -117,16 +102,15 @@ export default function AttendanceHistory() {
     student.rollNumber.includes(searchTerm)
   )
 
-  const navigateMonth = (direction: 'prev' | 'next') => {
+  const navigateMonth = (direction) => {
     setCurrentDate(direction === 'prev' ? subMonths(currentDate, 1) : addMonths(currentDate, 1))
   }
 
   const exportData = () => {
     // Export functionality would go here
     console.log('Exporting attendance data...')
-  }
-
-  return (
+  } 
+ return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
