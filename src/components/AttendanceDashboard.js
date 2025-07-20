@@ -37,6 +37,19 @@ export default function AttendanceDashboard() {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [])
 
+  useEffect(() => {
+    const absentStudents = students
+      .filter(student => student.consecutiveAbsences && student.consecutiveAbsences > 0)
+      .map(student => ({
+        studentId: student.id,
+        studentName: student.name,
+        rollNumber: student.rollNumber,
+        consecutiveAbsences: student.consecutiveAbsences,
+        daysSinceAbsent: student.consecutiveAbsences,
+      }));
+    setAbsenceNotifications(absentStudents);
+  }, [students]);
+
   // Calculate stats
   const totalStudents = students.length
   const averageAttendance = Math.round(students.reduce((sum, s) => sum + s.attendancePercentage, 0) / totalStudents)
@@ -179,21 +192,29 @@ export default function AttendanceDashboard() {
     
     // Update student statistics
     const updatedStudents = students.map(student => {
-      const status = attendance[student.id]
+      const status = attendance[student.id];
       if (status) {
-        const newTotalClasses = (student.totalClasses || 0) + 1
-        const newPresentClasses = (student.presentClasses || 0) + (status === 'present' ? 1 : 0)
-        const newAttendancePercentage = Math.round((newPresentClasses / newTotalClasses) * 100)
-        
+        const newTotalClasses = (student.totalClasses || 0) + 1;
+        const newPresentClasses = (student.presentClasses || 0) + (status === 'present' ? 1 : 0);
+        const newAttendancePercentage = Math.round((newPresentClasses / newTotalClasses) * 100);
+
+        let consecutiveAbsences = student.consecutiveAbsences || 0;
+        if (status === 'absent') {
+          consecutiveAbsences++;
+        } else {
+          consecutiveAbsences = 0;
+        }
+
         return {
           ...student,
           totalClasses: newTotalClasses,
           presentClasses: newPresentClasses,
-          attendancePercentage: newAttendancePercentage
-        }
+          attendancePercentage: newAttendancePercentage,
+          consecutiveAbsences: consecutiveAbsences,
+        };
       }
-      return student
-    })
+      return student;
+    });
     
     setStudents(updatedStudents)
     localStorage.setItem('students', JSON.stringify(updatedStudents))
