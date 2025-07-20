@@ -1,10 +1,11 @@
 import React from 'react';
+import AttendanceDashboard from './components/AttendanceDashboard';
+import './index.css';
 
 function App() {
   return (
-    <div>
-      <h1>Welcome to React!</h1>
-      <p>Your React project is ready to go.</p>
+    <div className="App">
+      <AttendanceDashboard />
     </div>
   );
 }
