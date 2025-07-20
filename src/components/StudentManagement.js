@@ -1,20 +1,26 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Button } from "./ui/button"
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Edit, Trash2, User, Search, X } from 'lucide-react'
 
 export default function StudentManagement() {
-  const [students, setStudents] = useState([])
+  const [students, setStudents] = useState(() => {
+    const savedStudents = localStorage.getItem('students');
+    return savedStudents ? JSON.parse(savedStudents) : [];
+  });
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingStudent, setEditingStudent] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [formData, setFormData] = useState({
     name: '',
     rollNumber: '',
-    email: '',
     phone: ''
   })
+
+  useEffect(() => {
+    localStorage.setItem('students', JSON.stringify(students));
+  }, [students]);
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -39,7 +45,7 @@ export default function StudentManagement() {
       setStudents([...students, newStudent])
     }
     
-    setFormData({ name: '', rollNumber: '', email: '', phone: '' })
+    setFormData({ name: '', rollNumber: '', phone: '' })
     setShowAddForm(false)
   }
 
@@ -48,7 +54,6 @@ export default function StudentManagement() {
     setFormData({
       name: student.name,
       rollNumber: student.rollNumber,
-      email: student.email || '',
       phone: student.phone || ''
     })
     setShowAddForm(true)
@@ -66,7 +71,7 @@ export default function StudentManagement() {
   )
 
   const resetForm = () => {
-    setFormData({ name: '', rollNumber: '', email: '', phone: '' })
+    setFormData({ name: '', rollNumber: '', phone: '' })
     setEditingStudent(null)
     setShowAddForm(false)
   }
@@ -235,19 +240,6 @@ export default function StudentManagement() {
                     onChange={(e) => setFormData({ ...formData, rollNumber: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter roll number"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email (Optional)
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter email address"
                   />
                 </div>
                 

@@ -5,6 +5,7 @@ import { BarChart3, History, Users, Calendar } from 'lucide-react'
 export default function Navigation({ currentView, onViewChange }) {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    { id: 'attendance', label: 'Attendance', icon: Calendar },
     { id: 'students', label: 'Students', icon: Users },
     { id: 'history', label: 'History', icon: History },
   ]

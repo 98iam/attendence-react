@@ -41,21 +41,6 @@ export default function AttendanceDashboard() {
               <p className="text-sm text-gray-600 mt-1">{today}</p>
             </div>
             <div className="flex items-center gap-4">
-              <Button
-                size="lg"
-                variant="outline"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                History
-              </Button>
-              <Button
-                size="lg"
-                className="bg-blue-600 hover:bg-blue-700"
-                onClick={() => setShowAttendanceMode(true)}
-              >
-                <Calendar className="h-4 w-4 mr-2" />
-                Attendance Mode
-              </Button>
             </div>
           </div>
         </div>

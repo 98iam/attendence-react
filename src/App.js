@@ -6,7 +6,7 @@ import AttendanceHistory from './components/AttendanceHistory';
 import './index.css';
 
 function App() {
-  const [currentView, setCurrentView] = useState('dashboard');
+  const [currentView, setCurrentView] = useState('attendance');
 
   const renderCurrentView = () => {
     switch (currentView) {
@@ -16,6 +16,8 @@ function App() {
         return <StudentManagement />;
       case 'history':
         return <AttendanceHistory />;
+      case 'attendance':
+        return <AttendanceDashboard />;
       default:
         return <AttendanceDashboard />;
     }

@@ -27,7 +27,6 @@ export default function AttendanceHistory() {
     { date: '2024-01-16', status: 'present', studentId: '1', studentName: 'Alice Johnson', rollNumber: '001' },
     { date: '2024-01-17', status: 'absent', studentId: '1', studentName: 'Alice Johnson', rollNumber: '001' },
     { date: '2024-01-18', status: 'present', studentId: '1', studentName: 'Alice Johnson', rollNumber: '001' },
-    { date: '2024-01-19', status: 'late', studentId: '1', studentName: 'Alice Johnson', rollNumber: '001' },
     
     // Bob's records
     { date: '2024-01-15', status: 'absent', studentId: '2', studentName: 'Bob Smith', rollNumber: '002' },
@@ -40,12 +39,10 @@ export default function AttendanceHistory() {
     { date: '2024-01-15', status: 'present', studentId: '3', studentName: 'Charlie Brown', rollNumber: '003' },
     { date: '2024-01-16', status: 'present', studentId: '3', studentName: 'Charlie Brown', rollNumber: '003' },
     { date: '2024-01-17', status: 'present', studentId: '3', studentName: 'Charlie Brown', rollNumber: '003' },
-    { date: '2024-01-18', status: 'excused', studentId: '3', studentName: 'Charlie Brown', rollNumber: '003' },
     { date: '2024-01-19', status: 'present', studentId: '3', studentName: 'Charlie Brown', rollNumber: '003' },
     
     // More records for other students...
     { date: '2024-01-15', status: 'present', studentId: '4', studentName: 'Diana Prince', rollNumber: '004' },
-    { date: '2024-01-16', status: 'late', studentId: '4', studentName: 'Diana Prince', rollNumber: '004' },
     { date: '2024-01-17', status: 'present', studentId: '4', studentName: 'Diana Prince', rollNumber: '004' },
     { date: '2024-01-18', status: 'present', studentId: '4', studentName: 'Diana Prince', rollNumber: '004' },
     { date: '2024-01-19', status: 'absent', studentId: '4', studentName: 'Diana Prince', rollNumber: '004' },
@@ -59,8 +56,6 @@ export default function AttendanceHistory() {
     switch (status) {
       case 'present': return 'bg-green-500'
       case 'absent': return 'bg-red-500'
-      case 'late': return 'bg-yellow-500'
-      case 'excused': return 'bg-blue-500'
       default: return 'bg-gray-200'
     }
   }
@@ -69,8 +64,6 @@ export default function AttendanceHistory() {
     switch (status) {
       case 'present': return <Check className="h-3 w-3 text-white" />
       case 'absent': return <X className="h-3 w-3 text-white" />
-      case 'late': return <Clock className="h-3 w-3 text-white" />
-      case 'excused': return <Calendar className="h-3 w-3 text-white" />
       default: return null
     }
   }
@@ -90,8 +83,6 @@ export default function AttendanceHistory() {
     const summary = {
       present: records.filter(r => r.status === 'present').length,
       absent: records.filter(r => r.status === 'absent').length,
-      late: records.filter(r => r.status === 'late').length,
-      excused: records.filter(r => r.status === 'excused').length,
     }
     
     return summary
@@ -247,18 +238,6 @@ export default function AttendanceHistory() {
                               <span className="text-xs">{summary.absent}</span>
                             </div>
                           )}
-                          {summary.late > 0 && (
-                            <div className="flex items-center gap-1">
-                              <div className="w-2 h-2 bg-yellow-500 rounded-full" />
-                              <span className="text-xs">{summary.late}</span>
-                            </div>
-                          )}
-                          {summary.excused > 0 && (
-                            <div className="flex items-center gap-1">
-                              <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                              <span className="text-xs">{summary.excused}</span>
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
@@ -275,14 +254,6 @@ export default function AttendanceHistory() {
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-red-500 rounded-full" />
                   <span>Absent</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-yellow-500 rounded-full" />
-                  <span>Late</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full" />
-                  <span>Excused</span>
                 </div>
               </div>
             </CardContent>
@@ -315,9 +286,7 @@ export default function AttendanceHistory() {
                         <p className="text-sm text-gray-600">{format(new Date(record.date), 'MMM d, yyyy')}</p>
                         <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
                           record.status === 'present' ? 'bg-green-100 text-green-800' :
-                          record.status === 'absent' ? 'bg-red-100 text-red-800' :
-                          record.status === 'late' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-blue-100 text-blue-800'
+                          'bg-red-100 text-red-800'
                         }`}>
                           {getStatusIcon(record.status)}
                           {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
