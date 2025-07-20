@@ -7,7 +7,6 @@ export default function Navigation({ currentView, onViewChange }) {
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'attendance', label: 'Attendance', icon: Calendar },
     { id: 'students', label: 'Students', icon: Users },
-    { id: 'profile', label: 'Profile', icon: Users },
     { id: 'history', label: 'History', icon: History },
   ]
 

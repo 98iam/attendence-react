@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Button } from "./ui/button"
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Edit, Trash2, User, Search, X } from 'lucide-react'
+import { Plus, Edit, Trash2, User, Search, X, ArrowLeft } from 'lucide-react'
+import StudentProfile from './StudentProfile'
 
 export default function StudentManagement() {
   const [students, setStudents] = useState(() => {
@@ -11,6 +12,7 @@ export default function StudentManagement() {
   });
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingStudent, setEditingStudent] = useState(null)
+  const [selectedStudent, setSelectedStudent] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [formData, setFormData] = useState({
     name: '',
@@ -24,11 +26,11 @@ export default function StudentManagement() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    
+
     if (editingStudent) {
       // Update existing student
-      setStudents(students.map(student => 
-        student.id === editingStudent.id 
+      setStudents(students.map(student =>
+        student.id === editingStudent.id
           ? { ...student, ...formData }
           : student
       ))
@@ -44,7 +46,7 @@ export default function StudentManagement() {
       }
       setStudents([...students, newStudent])
     }
-    
+
     setFormData({ name: '', rollNumber: '', phone: '' })
     setShowAddForm(false)
   }
@@ -76,6 +78,19 @@ export default function StudentManagement() {
     setShowAddForm(false)
   }
 
+  const handleStudentClick = (student) => {
+    setSelectedStudent(student)
+  }
+
+  const handleBackToList = () => {
+    setSelectedStudent(null)
+  }
+
+  // If a student is selected, show their profile
+  if (selectedStudent) {
+    return <StudentProfile student={selectedStudent} onBack={handleBackToList} />
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -86,7 +101,7 @@ export default function StudentManagement() {
               <h1 className="text-2xl font-bold text-gray-900">Student Management</h1>
               <p className="text-sm text-gray-600 mt-1">Add and manage students in your classroom</p>
             </div>
-            <Button 
+            <Button
               onClick={() => setShowAddForm(true)}
               className="bg-blue-600 hover:bg-blue-700"
             >
@@ -137,7 +152,8 @@ export default function StudentManagement() {
                     key={student.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow"
+                    className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => handleStudentClick(student)}
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
@@ -148,8 +164,8 @@ export default function StudentManagement() {
                       <div>
                         <h3 className="font-semibold text-gray-900">{student.name}</h3>
                         <p className="text-sm text-gray-600">Roll No: {student.rollNumber}</p>
-                        {student.email && (
-                          <p className="text-sm text-gray-500">{student.email}</p>
+                        {student.phone && (
+                          <p className="text-sm text-gray-500">{student.phone}</p>
                         )}
                       </div>
                     </div>
@@ -163,14 +179,20 @@ export default function StudentManagement() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleEdit(student)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEdit(student)
+                        }}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleDelete(student.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDelete(student.id)
+                        }}
                         className="text-red-600 hover:text-red-700"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -213,7 +235,7 @@ export default function StudentManagement() {
                   <X className="h-4 w-4" />
                 </Button>
               </div>
-              
+
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -228,7 +250,7 @@ export default function StudentManagement() {
                     placeholder="Enter student's full name"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Roll Number *
@@ -242,7 +264,7 @@ export default function StudentManagement() {
                     placeholder="Enter roll number"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Phone (Optional)
@@ -255,7 +277,7 @@ export default function StudentManagement() {
                     placeholder="Enter phone number"
                   />
                 </div>
-                
+
                 <div className="flex gap-3 pt-4">
                   <Button type="submit" className="flex-1">
                     {editingStudent ? 'Update Student' : 'Add Student'}

@@ -3,7 +3,6 @@ import Navigation from './components/Navigation';
 import AttendanceDashboard from './components/AttendanceDashboard';
 import StudentManagement from './components/StudentManagement';
 import AttendanceHistory from './components/AttendanceHistory';
-import StudentProfile from './components/StudentProfile';
 import './index.css';
 
 function App() {
@@ -15,8 +14,6 @@ function App() {
         return <AttendanceDashboard />;
       case 'students':
         return <StudentManagement />;
-      case 'profile':
-        return <StudentProfile />;
       case 'history':
         return <AttendanceHistory />;
       case 'attendance':
