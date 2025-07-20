@@ -5,11 +5,27 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Calendar, Download, Users, Check, X, Clock, AlertCircle, TrendingUp, ChevronRight } from 'lucide-react'
 
 export default function AttendanceDashboard() {
-  const [students, setStudents] = useState([])
+  const [students, setStudents] = useState(() => {
+    const savedStudents = localStorage.getItem('students');
+    return savedStudents ? JSON.parse(savedStudents) : [];
+  })
   const [absenceNotifications, setAbsenceNotifications] = useState([])
 
   const [showAttendanceMode, setShowAttendanceMode] = useState(false)
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+
+  // Listen for localStorage changes to sync data
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedStudents = localStorage.getItem('students');
+      if (savedStudents) {
+        setStudents(JSON.parse(savedStudents));
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [])
 
   // Calculate stats
   const totalStudents = students.length

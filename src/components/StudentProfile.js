@@ -1,27 +1,11 @@
 import { useState, useMemo } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from "/components/ui/card"
-import { Button } from "/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
+import { Button } from "./ui/button"
 import { motion } from 'framer-motion'
 import { User, Phone, Mail, Calendar, TrendingUp, Check, X } from 'lucide-react'
-import { format, isSameDay, subDays, eachDayOfInterval } from 'date-fns'
-
-interface Student {
-  id: string
-  name: string
-  rollNumber: string
-  email: string
-  phone: string
-  admissionDate: string
-  avatar: string
-}
-
-interface AttendanceRecord {
-  date: string
-  status: 'present' | 'absent'
-}
 
 export default function StudentProfile() {
-  const [selectedStudent] = useState<Student>({
+  const [selectedStudent] = useState({
     id: '1',
     name: 'Alice Johnson',
     rollNumber: '001',
@@ -32,18 +16,19 @@ export default function StudentProfile() {
   })
 
   // Mock attendance data for the last 30 days
-  const attendanceRecords: AttendanceRecord[] = useMemo(() => {
-    const records: AttendanceRecord[] = []
+  const attendanceRecords = useMemo(() => {
+    const records = []
     const today = new Date()
     
     for (let i = 0; i < 30; i++) {
-      const date = subDays(today, i)
+      const date = new Date(today)
+      date.setDate(date.getDate() - i)
       const random = Math.random()
       
-      let status: 'present' | 'absent' = random < 0.85 ? 'present' : 'absent'
+      let status = random < 0.85 ? 'present' : 'absent'
       
       records.push({
-        date: format(date, 'yyyy-MM-dd'),
+        date: date.toISOString().split('T')[0],
         status
       })
     }
@@ -64,23 +49,57 @@ export default function StudentProfile() {
     }
   }, [attendanceRecords])
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status) => {
     return status === 'present' ? 'bg-green-500' : 'bg-red-500'
   }
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status) => {
     return status === 'present' ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />
   }
 
-  const last30Days = eachDayOfInterval({
-    start: subDays(new Date(), 29),
-    end: new Date()
-  })
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    })
+  }
 
-  const getAttendanceForDate = (date: Date) => {
-    const dateStr = format(date, 'yyyy-MM-dd')
+  const formatShortDate = (dateStr) => {
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    })
+  }
+
+  const getLast30Days = () => {
+    const days = []
+    const today = new Date()
+    
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date(today)
+      date.setDate(date.getDate() - i)
+      days.push(date)
+    }
+    
+    return days
+  }
+
+  const getAttendanceForDate = (date) => {
+    const dateStr = date.toISOString().split('T')[0]
     return attendanceRecords.find(record => record.date === dateStr)
   }
+
+  const isToday = (date) => {
+    const today = new Date()
+    return date.toDateString() === today.toDateString()
+  }
+
+  const last30Days = getLast30Days()
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -133,7 +152,7 @@ export default function StudentProfile() {
                     <Calendar className="h-5 w-5 text-gray-400" />
                     <div>
                       <p className="text-sm text-gray-600">Admission Date</p>
-                      <p className="font-medium">{format(new Date(selectedStudent.admissionDate), 'MMM d, yyyy')}</p>
+                      <p className="font-medium">{formatShortDate(selectedStudent.admissionDate)}</p>
                     </div>
                   </div>
                 </div>
@@ -204,7 +223,7 @@ export default function StudentProfile() {
                   ))}
                   {last30Days.map((day, index) => {
                     const record = getAttendanceForDate(day)
-                    const isToday = isSameDay(day, new Date())
+                    const todayCheck = isToday(day)
                     
                     return (
                       <motion.div
@@ -215,12 +234,12 @@ export default function StudentProfile() {
                         className={`
                           aspect-square rounded-lg flex flex-col items-center justify-center text-xs
                           ${record ? getStatusColor(record.status) : 'bg-gray-100'}
-                          ${isToday ? 'ring-2 ring-blue-500' : ''}
+                          ${todayCheck ? 'ring-2 ring-blue-500' : ''}
                           ${record ? 'text-white' : 'text-gray-400'}
                           hover:scale-105 transition-transform cursor-pointer
                         `}
                       >
-                        <span className="font-bold">{format(day, 'd')}</span>
+                        <span className="font-bold">{day.getDate()}</span>
                         {record && (
                           <div className="mt-1">
                             {getStatusIcon(record.status)}
@@ -251,7 +270,7 @@ export default function StudentProfile() {
                             {getStatusIcon(record.status)}
                           </div>
                           <div>
-                            <p className="font-medium">{format(new Date(record.date), 'EEEE, MMM d, yyyy')}</p>
+                            <p className="font-medium">{formatDate(record.date)}</p>
                             <p className="text-sm text-gray-600">
                               {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
                             </p>
