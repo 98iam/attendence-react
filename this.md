@@ -1,315 +1,452 @@
-import { useState, useMemo } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from "/components/ui/card"
-import { Button } from "/components/ui/button"
-import { motion } from 'framer-motion'
-import { User, Phone, Mail, Calendar, TrendingUp, Check, X } from 'lucide-react'
-import { format, isSameDay, subDays, eachDayOfInterval } from 'date-fns'
+import React, { useState, useEffect, useCallback } from 'react';
+import { RotateCcw, ArrowDown, ArrowUp, Check } from 'lucide-react';
 
-interface Student {
-  id: string
-  name: string
-  rollNumber: string
-  email: string
-  phone: string
-  admissionDate: string
-  avatar: string
-}
+const AttendanceSwiper = () => {
+  const initialStudents = [
+    { id: '1', name: 'Alice Johnson', rollNumber: '001', avatar: 'AJ' },
+    { id: '2', name: 'Bob Smith', rollNumber: '002', avatar: 'BS' },
+    { id: '3', name: 'Charlie Brown', rollNumber: '003', avatar: 'CB' },
+    { id: '4', name: 'Diana Prince', rollNumber: '004', avatar: 'DP' },
+    { id: '5', name: 'Ethan Hunt', rollNumber: '005', avatar: 'EH' },
+    { id: '6', name: 'Fiona Green', rollNumber: '006', avatar: 'FG' },
+  ];
 
-interface AttendanceRecord {
-  date: string
-  status: 'present' | 'absent'
-}
+  const [students, setStudents] = useState([...initialStudents]);
+  const [history, setHistory] = useState([]);
+  const [attendance, setAttendance] = useState({});
+  const [dragState, setDragState] = useState({
+    isDragging: false,
+    deltaY: 0,
+    startY: 0
+  });
 
-export default function StudentProfile() {
-  const [selectedStudent] = useState<Student>({
-    id: '1',
-    name: 'Alice Johnson',
-    rollNumber: '001',
-    email: 'alice.johnson@school.edu',
-    phone: '+1 (555) 123-4567',
-    admissionDate: '2022-09-01',
-    avatar: 'AJ'
-  })
+  const SWIPE_THRESHOLD = 80;
 
-  // Mock attendance data for the last 30 days
-  const attendanceRecords: AttendanceRecord[] = useMemo(() => {
-    const records: AttendanceRecord[] = []
-    const today = new Date()
-    
-    for (let i = 0; i < 30; i++) {
-      const date = subDays(today, i)
-      const random = Math.random()
+  const handleSwipe = useCallback((status) => {
+    if (students.length === 0) return;
+
+    setStudents(prev => {
+      const newStudents = [...prev];
+      const swipedStudent = newStudents.pop();
       
-      let status: 'present' | 'absent' = random < 0.85 ? 'present' : 'absent'
+      setHistory(prevHistory => [...prevHistory, swipedStudent]);
+      setAttendance(prevAttendance => ({
+        ...prevAttendance,
+        [swipedStudent.id]: status
+      }));
       
-      records.push({
-        date: format(date, 'yyyy-MM-dd'),
-        status
-      })
-    }
+      console.log(`Marked ${swipedStudent.name} as ${status}`);
+      
+      return newStudents;
+    });
+  }, [students.length]);
+
+  const handleUndo = useCallback(() => {
+    if (history.length === 0) return;
     
-    return records.reverse()
-  }, [])
+    setHistory(prev => {
+      const newHistory = [...prev];
+      const lastStudent = newHistory.pop();
+      
+      setStudents(prevStudents => [...prevStudents, lastStudent]);
+      setAttendance(prev => {
+        const newAttendance = { ...prev };
+        delete newAttendance[lastStudent.id];
+        return newAttendance;
+      });
+      
+      return newHistory;
+    });
+  }, [history.length]);
 
-  const stats = useMemo(() => {
-    const total = attendanceRecords.length
-    const present = attendanceRecords.filter(r => r.status === 'present').length
-    const absent = attendanceRecords.filter(r => r.status === 'absent').length
+  const handlePointerDown = (e) => {
+    if (students.length === 0) return;
     
-    return {
-      total,
-      present,
-      absent,
-      percentage: Math.round((present / total) * 100)
+    setDragState({
+      isDragging: true,
+      startY: e.clientY,
+      deltaY: 0
+    });
+    e.preventDefault();
+  };
+
+  const handlePointerMove = useCallback((e) => {
+    if (!dragState.isDragging) return;
+    
+    const deltaY = e.clientY - dragState.startY;
+    setDragState(prev => ({ ...prev, deltaY }));
+  }, [dragState.isDragging, dragState.startY]);
+
+  const handlePointerUp = useCallback(() => {
+    if (!dragState.isDragging) return;
+    
+    const { deltaY } = dragState;
+    setDragState({ isDragging: false, deltaY: 0, startY: 0 });
+
+    if (Math.abs(deltaY) > SWIPE_THRESHOLD) {
+      // Swipe up is present (deltaY is negative)
+      // Swipe down is absent (deltaY is positive)
+      handleSwipe(deltaY < 0 ? 'present' : 'absent');
     }
-  }, [attendanceRecords])
+  }, [dragState.isDragging, dragState.deltaY, handleSwipe]);
 
-  const getStatusColor = (status: string) => {
-    return status === 'present' ? 'bg-green-500' : 'bg-red-500'
-  }
+  useEffect(() => {
+    if (dragState.isDragging) {
+      document.addEventListener('pointermove', handlePointerMove);
+      document.addEventListener('pointerup', handlePointerUp);
+      
+      return () => {
+        document.removeEventListener('pointermove', handlePointerMove);
+        document.removeEventListener('pointerup', handlePointerUp);
+      };
+    }
+  }, [dragState.isDragging, handlePointerMove, handlePointerUp]);
 
-  const getStatusIcon = (status: string) => {
-    return status === 'present' ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />
-  }
+  const Card = ({ student, index, isTopCard }) => {
+    const presentOpacity = Math.max(0, -dragState.deltaY / SWIPE_THRESHOLD);
+    const absentOpacity = Math.max(0, dragState.deltaY / SWIPE_THRESHOLD);
+    
+    const cardStyle = {
+      zIndex: index,
+      transform: `scale(${1 - (students.length - 1 - index) * 0.05}) translateY(${(students.length - 1 - index) * 10}px)${
+        isTopCard && dragState.isDragging ? ` translateY(${dragState.deltaY}px)` : ''
+      }`,
+      transition: dragState.isDragging && isTopCard ? 'none' : 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+      cursor: isTopCard ? (dragState.isDragging ? 'grabbing' : 'grab') : 'default',
+      touchAction: 'none'
+    };
 
-  const last30Days = eachDayOfInterval({
-    start: subDays(new Date(), 29),
-    end: new Date()
-  })
-
-  const getAttendanceForDate = (date: Date) => {
-    const dateStr = format(date, 'yyyy-MM-dd')
-    return attendanceRecords.find(record => record.date === dateStr)
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+    return (
+      <div 
+        className="card" 
+        style={cardStyle}
+        onPointerDown={isTopCard ? handlePointerDown : undefined}
+      >
+        {/* Present Feedback Overlay */}
+        <div 
+          className="swipe-feedback-overlay present"
+          style={{ opacity: isTopCard ? presentOpacity : 0 }}
         >
-          <h1 className="text-3xl font-bold text-gray-900">Student Profile</h1>
-          <p className="text-gray-600 mt-2">Detailed attendance and student information</p>
-        </motion.div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Student Info Card */}
-          <div className="lg:col-span-1">
-            <Card className="overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-500 to-blue-600 h-32 relative">
-                <div className="absolute -bottom-12 left-6">
-                  <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-lg">
-                    <span className="text-3xl font-bold text-blue-600">{selectedStudent.avatar}</span>
-                  </div>
-                </div>
-              </div>
-              <CardContent className="pt-16">
-                <div className="text-center">
-                  <h2 className="text-2xl font-bold text-gray-900">{selectedStudent.name}</h2>
-                  <p className="text-gray-600">Roll No: {selectedStudent.rollNumber}</p>
-                </div>
-                
-                <div className="mt-6 space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm text-gray-600">Email</p>
-                      <p className="font-medium">{selectedStudent.email}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <Phone className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm text-gray-600">Phone</p>
-                      <p className="font-medium">{selectedStudent.phone}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <Calendar className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm text-gray-600">Admission Date</p>
-                      <p className="font-medium">{format(new Date(selectedStudent.admissionDate), 'MMM d, yyyy')}</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Quick Stats */}
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle className="text-lg">Attendance Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Total Days</span>
-                    <span className="font-bold text-2xl">{stats.total}</span>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Present</span>
-                      <span className="font-bold text-green-600">{stats.present}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-green-500 h-2 rounded-full" 
-                        style={{ width: `${(stats.present / stats.total) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Absent</span>
-                      <span className="font-bold text-red-600">{stats.absent}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-red-500 h-2 rounded-full" 
-                        style={{ width: `${(stats.absent / stats.total) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          PRESENT
+        </div>
+        
+        {/* Absent Feedback Overlay */}
+        <div 
+          className="swipe-feedback-overlay absent"
+          style={{ opacity: isTopCard ? absentOpacity : 0 }}
+        >
+          ABSENT
+        </div>
+        
+        <div className="card-info">
+          <div className="avatar">{student.avatar}</div>
+          <h2>{student.name}</h2>
+          <p className="roll-number">Roll No: {student.rollNumber}</p>
+        </div>
+        
+        <div className="swipe-indicators">
+          <div className="indicator present">
+            <div className="icon">
+              <ArrowUp size={20} />
+            </div>
+            <span>Present</span>
           </div>
-
-          {/* Attendance Details */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Attendance Record (Last 30 Days)</CardTitle>
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-green-600" />
-                    <span className="text-2xl font-bold text-green-600">{stats.percentage}%</span>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {/* Calendar Grid */}
-                <div className="grid grid-cols-7 gap-1 mb-4">
-                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                    <div key={day} className="text-center text-sm font-medium text-gray-600 py-2">
-                      {day}
-                    </div>
-                  ))}
-                  {last30Days.map((day, index) => {
-                    const record = getAttendanceForDate(day)
-                    const isToday = isSameDay(day, new Date())
-                    
-                    return (
-                      <motion.div
-                        key={day.toString()}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: index * 0.01 }}
-                        className={`
-                          aspect-square rounded-lg flex flex-col items-center justify-center text-xs
-                          ${record ? getStatusColor(record.status) : 'bg-gray-100'}
-                          ${isToday ? 'ring-2 ring-blue-500' : ''}
-                          ${record ? 'text-white' : 'text-gray-400'}
-                          hover:scale-105 transition-transform cursor-pointer
-                        `}
-                      >
-                        <span className="font-bold">{format(day, 'd')}</span>
-                        {record && (
-                          <div className="mt-1">
-                            {getStatusIcon(record.status)}
-                          </div>
-                        )}
-                      </motion.div>
-                    )
-                  })}
-                </div>
-
-                {/* Detailed Records */}
-                <div className="border-t pt-4">
-                  <h3 className="font-semibold mb-3">Recent Records</h3>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {attendanceRecords.slice(-10).reverse().map((record, index) => (
-                      <motion.div
-                        key={record.date}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        className="flex items-center justify-between p-3 rounded-lg bg-gray-50"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`
-                            w-8 h-8 rounded-full flex items-center justify-center
-                            ${getStatusColor(record.status)} text-white
-                          `}>
-                            {getStatusIcon(record.status)}
-                          </div>
-                          <div>
-                            <p className="font-medium">{format(new Date(record.date), 'EEEE, MMM d, yyyy')}</p>
-                            <p className="text-sm text-gray-600">
-                              {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className={`
-                          px-3 py-1 rounded-full text-sm font-medium
-                          ${record.status === 'present' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
-                        `}>
-                          {record.status.toUpperCase()}
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Performance Insights */}
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle className="text-lg">Performance Insights</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{stats.percentage}%</div>
-                    <p className="text-sm text-gray-600">Attendance Rate</p>
-                  </div>
-                  
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{stats.present}</div>
-                    <p className="text-sm text-gray-600">Days Present</p>
-                  </div>
-                  
-                  <div className="text-center p-4 bg-red-50 rounded-lg">
-                    <div className="text-2xl font-bold text-red-600">{stats.absent}</div>
-                    <p className="text-sm text-gray-600">Days Absent</p>
-                  </div>
-                </div>
-                
-                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                  <h4 className="font-medium mb-2">Attendance Trend</h4>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-gradient-to-r from-red-500 to-green-500 h-2 rounded-full"
-                        style={{ width: `${stats.percentage}%` }}
-                      />
-                    </div>
-                    <span className="text-sm font-medium">{stats.percentage}%</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="indicator absent">
+            <div className="icon">
+              <ArrowDown size={20} />
+            </div>
+            <span>Absent</span>
           </div>
         </div>
       </div>
+    );
+  };
+
+  return (
+    <div className="app-container">
+      <style jsx>{`
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+        :root {
+          --green: #22c55e;
+          --red: #ef4444;
+          --yellow: #eab308;
+          --blue: #3b82f6;
+          --indigo: #6366f1;
+          --gray-100: #f3f4f6;
+          --gray-500: #6b7280;
+          --gray-800: #1f2937;
+          --gray-900: #11182c;
+          --white: #ffffff;
+        }
+
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+
+        body {
+          font-family: 'Poppins', sans-serif;
+          background-color: var(--gray-100);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 100vh;
+          overflow: hidden;
+          -webkit-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
+        }
+
+        .app-container {
+          width: 100%;
+          max-width: 360px;
+          padding: 16px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .header {
+          text-align: center;
+          margin-bottom: 24px;
+        }
+
+        .header h1 {
+          font-size: 1.5rem;
+          color: var(--gray-800);
+          font-weight: 700;
+        }
+
+        .header p {
+          color: var(--gray-500);
+        }
+
+        .card-stack {
+          position: relative;
+          width: 100%;
+          height: 480px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .card {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          background-color: var(--white);
+          border-radius: 20px;
+          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: space-around;
+          padding: 24px;
+        }
+
+        .card-info {
+          text-align: center;
+        }
+
+        .avatar {
+          width: 128px;
+          height: 128px;
+          border-radius: 50%;
+          background-image: linear-gradient(to bottom right, var(--blue), var(--indigo));
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 24px;
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+          color: var(--white);
+          font-size: 3rem;
+          font-weight: 700;
+        }
+
+        .card-info h2 {
+          font-size: 1.75rem;
+          color: var(--gray-900);
+          margin-bottom: 4px;
+        }
+
+        .card-info .roll-number {
+          color: var(--gray-500);
+        }
+
+        .swipe-indicators {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+          width: 100%;
+        }
+
+        .indicator {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 1.1rem;
+          font-weight: 600;
+        }
+
+        .indicator .icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .indicator.present { color: var(--green); }
+        .indicator.present .icon { background-color: #dcfce7; }
+
+        .indicator.absent { color: var(--red); }
+        .indicator.absent .icon { background-color: #fee2e2; }
+
+        .swipe-feedback-overlay {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 3rem;
+          font-weight: 700;
+          color: var(--white);
+          opacity: 0;
+          pointer-events: none;
+          border-radius: 20px;
+        }
+
+        .swipe-feedback-overlay.present { 
+          background-color: rgba(34, 197, 94, 0.7); 
+        }
+        
+        .swipe-feedback-overlay.absent { 
+          background-color: rgba(239, 68, 68, 0.7); 
+        }
+
+        .action-buttons {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 24px;
+          margin-top: 24px;
+        }
+
+        .action-button {
+          width: 64px;
+          height: 64px;
+          border-radius: 50%;
+          border: none;
+          background-color: var(--white);
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: transform 0.1s ease-out;
+        }
+
+        .action-button:disabled { 
+          opacity: 0.5; 
+          cursor: not-allowed; 
+        }
+        
+        .action-button:not(:disabled):active { 
+          transform: scale(0.9); 
+        }
+        
+        .action-button.undo { 
+          width: 56px; 
+          height: 56px; 
+        }
+
+        .completion-screen {
+          position: absolute;
+          text-align: center;
+          opacity: 0;
+          transform: scale(0.8);
+          transition: opacity 0.3s, transform 0.3s;
+          pointer-events: none;
+        }
+
+        .completion-screen.visible {
+          opacity: 1;
+          transform: scale(1);
+          pointer-events: auto;
+        }
+
+        .completion-icon {
+          width: 80px;
+          height: 80px;
+          background-color: #dcfce7;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 16px;
+        }
+      `}</style>
+      
+      <header className="header">
+        <h1>Mark Attendance</h1>
+        <p>Swipe up for Present, down for Absent</p>
+      </header>
+
+      <div className="card-stack">
+        {students.map((student, index) => (
+          <Card 
+            key={student.id}
+            student={student}
+            index={index}
+            isTopCard={index === students.length - 1}
+          />
+        ))}
+        
+        <div className={`completion-screen ${students.length === 0 ? 'visible' : ''}`}>
+          <div className="completion-icon">
+            <Check size={40} color="var(--green)" />
+          </div>
+          <h2>All Done!</h2>
+          <p className="roll-number">Attendance has been recorded.</p>
+        </div>
+      </div>
+
+      <div className="action-buttons">
+        <button 
+          className="action-button undo"
+          onClick={handleUndo}
+          disabled={history.length === 0}
+          title="Undo"
+        >
+          <RotateCcw size={28} color="var(--yellow)" />
+        </button>
+        
+        <button 
+          className="action-button absent"
+          onClick={() => handleSwipe('absent')}
+          disabled={students.length === 0}
+          title="Absent (Swipe Down)"
+        >
+          <ArrowDown size={28} color="var(--red)" />
+        </button>
+        
+        <button 
+          className="action-button present"
+          onClick={() => handleSwipe('present')}
+          disabled={students.length === 0}
+          title="Present (Swipe Up)"
+        >
+          <ArrowUp size={28} color="var(--green)" />
+        </button>
+      </div>
     </div>
-  )
-}
+  );
+};
+
+export default AttendanceSwiper;
