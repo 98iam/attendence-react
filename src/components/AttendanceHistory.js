@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Button } from "./ui/button"
 import { motion, AnimatePresence } from 'framer-motion'
@@ -10,43 +10,57 @@ export default function AttendanceHistory() {
   const [selectedStudent, setSelectedStudent] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [viewMode, setViewMode] = useState('calendar')
+  const [showTodayResults, setShowTodayResults] = useState(false)
 
-  // Mock data - in real app, this would come from your backend
-  const students = [
-    { id: '1', name: 'Alice Johnson', rollNumber: '001', avatar: 'AJ' },
-    { id: '2', name: 'Bob Smith', rollNumber: '002', avatar: 'BS' },
-    { id: '3', name: 'Charlie Brown', rollNumber: '003', avatar: 'CB' },
-    { id: '4', name: 'Diana Prince', rollNumber: '004', avatar: 'DP' },
-    { id: '5', name: 'Ethan Hunt', rollNumber: '005', avatar: 'EH' },
-    { id: '6', name: 'Fiona Green', rollNumber: '006', avatar: 'FG' },
-  ]
+  // Real data from localStorage
+  const [students, setStudents] = useState(() => {
+    const savedStudents = localStorage.getItem('students');
+    return savedStudents ? JSON.parse(savedStudents) : [];
+  })
 
-  const attendanceRecords = [
-    // Alice's records
-    { date: '2024-01-15', status: 'present', studentId: '1', studentName: 'Alice Johnson', rollNumber: '001' },
-    { date: '2024-01-16', status: 'present', studentId: '1', studentName: 'Alice Johnson', rollNumber: '001' },
-    { date: '2024-01-17', status: 'absent', studentId: '1', studentName: 'Alice Johnson', rollNumber: '001' },
-    { date: '2024-01-18', status: 'present', studentId: '1', studentName: 'Alice Johnson', rollNumber: '001' },
+  const [attendanceRecords, setAttendanceRecords] = useState(() => {
+    const savedRecords = localStorage.getItem('attendanceRecords');
+    return savedRecords ? JSON.parse(savedRecords) : [];
+  })
+
+  // Listen for localStorage changes to sync data
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedStudents = localStorage.getItem('students');
+      const savedRecords = localStorage.getItem('attendanceRecords');
+      
+      if (savedStudents) {
+        setStudents(JSON.parse(savedStudents));
+      }
+      if (savedRecords) {
+        setAttendanceRecords(JSON.parse(savedRecords));
+      }
+    };
     
-    // Bob's records
-    { date: '2024-01-15', status: 'absent', studentId: '2', studentName: 'Bob Smith', rollNumber: '002' },
-    { date: '2024-01-16', status: 'absent', studentId: '2', studentName: 'Bob Smith', rollNumber: '002' },
-    { date: '2024-01-17', status: 'present', studentId: '2', studentName: 'Bob Smith', rollNumber: '002' },
-    { date: '2024-01-18', status: 'absent', studentId: '2', studentName: 'Bob Smith', rollNumber: '002' },
-    { date: '2024-01-19', status: 'present', studentId: '2', studentName: 'Bob Smith', rollNumber: '002' },
+    window.addEventListener('storage', handleStorageChange);
     
-    // Charlie's records
-    { date: '2024-01-15', status: 'present', studentId: '3', studentName: 'Charlie Brown', rollNumber: '003' },
-    { date: '2024-01-16', status: 'present', studentId: '3', studentName: 'Charlie Brown', rollNumber: '003' },
-    { date: '2024-01-17', status: 'present', studentId: '3', studentName: 'Charlie Brown', rollNumber: '003' },
-    { date: '2024-01-19', status: 'present', studentId: '3', studentName: 'Charlie Brown', rollNumber: '003' },
+    // Also listen for custom events when attendance is taken
+    const handleAttendanceUpdate = () => {
+      handleStorageChange();
+    };
     
-    // More records for other students...
-    { date: '2024-01-15', status: 'present', studentId: '4', studentName: 'Diana Prince', rollNumber: '004' },
-    { date: '2024-01-17', status: 'present', studentId: '4', studentName: 'Diana Prince', rollNumber: '004' },
-    { date: '2024-01-18', status: 'present', studentId: '4', studentName: 'Diana Prince', rollNumber: '004' },
-    { date: '2024-01-19', status: 'absent', studentId: '4', studentName: 'Diana Prince', rollNumber: '004' },
-  ]
+    window.addEventListener('attendanceUpdated', handleAttendanceUpdate);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('attendanceUpdated', handleAttendanceUpdate);
+    };
+  }, [])
+
+  // Sort students by roll number for consistent ordering
+  const sortedStudents = useMemo(() => {
+    return [...students].sort((a, b) => {
+      // Convert roll numbers to numbers for proper sorting
+      const rollA = parseInt(a.rollNumber) || 0;
+      const rollB = parseInt(b.rollNumber) || 0;
+      return rollA - rollB;
+    });
+  }, [students])
 
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
@@ -88,7 +102,7 @@ export default function AttendanceHistory() {
     return summary
   }
 
-  const filteredStudents = students.filter(student => 
+  const filteredStudents = sortedStudents.filter(student => 
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.rollNumber.includes(searchTerm)
   )
@@ -96,6 +110,40 @@ export default function AttendanceHistory() {
   const navigateMonth = (direction) => {
     setCurrentDate(direction === 'prev' ? subMonths(currentDate, 1) : addMonths(currentDate, 1))
   }
+
+  // Get today's attendance results
+  const getTodayResults = () => {
+    const today = new Date().toISOString().split('T')[0]
+    const todayRecords = attendanceRecords.filter(record => record.date === today)
+    
+    // Sort by roll number
+    return todayRecords.sort((a, b) => {
+      const rollA = parseInt(a.rollNumber) || 0
+      const rollB = parseInt(b.rollNumber) || 0
+      return rollA - rollB
+    })
+  }
+
+  const todayResults = getTodayResults()
+  const todayPresent = todayResults.filter(r => r.status === 'present').length
+  const todayAbsent = todayResults.filter(r => r.status === 'absent').length
+
+  // Listen for attendance completion to show results
+  useEffect(() => {
+    const handleAttendanceComplete = (event) => {
+      setShowTodayResults(true)
+      // Auto-hide after 5 seconds
+      setTimeout(() => {
+        setShowTodayResults(false)
+      }, 5000)
+    }
+    
+    window.addEventListener('attendanceComplete', handleAttendanceComplete)
+    
+    return () => {
+      window.removeEventListener('attendanceComplete', handleAttendanceComplete)
+    }
+  }, [])
 
   const exportData = () => {
     // Export functionality would go here

@@ -20,6 +20,8 @@ export default function AttendanceDashboard() {
     deltaY: 0,
     startY: 0
   })
+  const [showResults, setShowResults] = useState(false)
+  const [attendanceResults, setAttendanceResults] = useState([])
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
   // Listen for localStorage changes to sync data
@@ -56,7 +58,13 @@ export default function AttendanceDashboard() {
 
   // Attendance mode functions
   const startAttendanceMode = () => {
-    setSwipeStudents([...students])
+    // Sort students by roll number before starting attendance
+    const sortedStudents = [...students].sort((a, b) => {
+      const rollA = parseInt(a.rollNumber) || 0
+      const rollB = parseInt(b.rollNumber) || 0
+      return rollA - rollB
+    })
+    setSwipeStudents(sortedStudents)
     setHistory([])
     setAttendance({})
     setDragState({ isDragging: false, deltaY: 0, startY: 0 })
@@ -144,6 +152,32 @@ export default function AttendanceDashboard() {
   }, [dragState.isDragging, handlePointerMove, handlePointerUp]);
 
   const saveAttendanceData = () => {
+    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+    
+    // Create attendance records for history (sorted by roll number)
+    const newAttendanceRecords = Object.entries(attendance)
+      .map(([studentId, status]) => {
+        const student = students.find(s => s.id === studentId)
+        return {
+          date: today,
+          status,
+          studentId,
+          studentName: student?.name || '',
+          rollNumber: student?.rollNumber || ''
+        }
+      })
+      .sort((a, b) => {
+        const rollA = parseInt(a.rollNumber) || 0
+        const rollB = parseInt(b.rollNumber) || 0
+        return rollA - rollB
+      })
+    
+    // Save attendance records to localStorage
+    const existingRecords = JSON.parse(localStorage.getItem('attendanceRecords') || '[]')
+    const updatedRecords = [...existingRecords, ...newAttendanceRecords]
+    localStorage.setItem('attendanceRecords', JSON.stringify(updatedRecords))
+    
+    // Update student statistics
     const updatedStudents = students.map(student => {
       const status = attendance[student.id]
       if (status) {
@@ -163,11 +197,39 @@ export default function AttendanceDashboard() {
     
     setStudents(updatedStudents)
     localStorage.setItem('students', JSON.stringify(updatedStudents))
+    
+    // Dispatch custom events to notify other components
+    window.dispatchEvent(new CustomEvent('attendanceUpdated'))
+    window.dispatchEvent(new CustomEvent('attendanceComplete', { 
+      detail: { 
+        records: newAttendanceRecords,
+        date: today 
+      } 
+    }))
   }
 
   const closeAttendanceMode = () => {
     if (Object.keys(attendance).length > 0) {
+      // Prepare results data sorted by roll number
+      const results = Object.entries(attendance)
+        .map(([studentId, status]) => {
+          const student = students.find(s => s.id === studentId)
+          return {
+            studentId,
+            studentName: student?.name || '',
+            rollNumber: student?.rollNumber || '',
+            status
+          }
+        })
+        .sort((a, b) => {
+          const rollA = parseInt(a.rollNumber) || 0
+          const rollB = parseInt(b.rollNumber) || 0
+          return rollA - rollB
+        })
+      
+      setAttendanceResults(results)
       saveAttendanceData()
+      setShowResults(true)
     }
     setShowAttendanceMode(false)
     setSwipeStudents([])
@@ -358,6 +420,107 @@ export default function AttendanceDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Attendance Results Modal */}
+        <AnimatePresence>
+          {showResults && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+              onClick={() => setShowResults(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Attendance Results</h2>
+                    <p className="text-gray-600">
+                      {new Date().toLocaleDateString('en-US', { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setShowResults(false)}
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+
+                {/* Summary Stats */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="bg-green-50 p-4 rounded-lg text-center">
+                    <div className="text-2xl font-bold text-green-600">
+                      {attendanceResults.filter(r => r.status === 'present').length}
+                    </div>
+                    <div className="text-sm text-green-800">Present</div>
+                  </div>
+                  <div className="bg-red-50 p-4 rounded-lg text-center">
+                    <div className="text-2xl font-bold text-red-600">
+                      {attendanceResults.filter(r => r.status === 'absent').length}
+                    </div>
+                    <div className="text-sm text-red-800">Absent</div>
+                  </div>
+                </div>
+
+                {/* Student List - Sorted by Roll Number */}
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-gray-900 mb-3">Student-wise Attendance (Roll Number Order)</h3>
+                  {attendanceResults.map((result, index) => (
+                    <motion.div
+                      key={result.studentId}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-xs font-semibold">
+                          {result.rollNumber}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{result.studentName}</p>
+                          <p className="text-sm text-gray-600">Roll: {result.rollNumber}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
+                          result.status === 'present' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {result.status === 'present' ? (
+                            <Check className="h-3 w-3" />
+                          ) : (
+                            <X className="h-3 w-3" />
+                          )}
+                          {result.status === 'present' ? 'Present' : 'Absent'}
+                        </span>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+
+                <div className="mt-6 flex justify-end">
+                  <Button onClick={() => setShowResults(false)}>
+                    Close
+                  </Button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Improved Tinder-Style Attendance Mode */}
         <AnimatePresence>
