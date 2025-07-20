@@ -6,6 +6,9 @@ import { Calendar, Download, Users, Check, X, Clock, AlertCircle, TrendingUp, Ch
 
 export default function AttendanceDashboard() {
   const [students, setStudents] = useState([])
+  const [newStudentName, setNewStudentName] = useState('')
+  const [newStudentRollNo, setNewStudentRollNo] = useState('')
+  const [newStudentPhone, setNewStudentPhone] = useState('')
 
   const [absenceNotifications, setAbsenceNotifications] = useState([])
 
@@ -29,6 +32,22 @@ export default function AttendanceDashboard() {
     return { level: 'Low Risk', color: 'text-yellow-600 bg-yellow-50' }
   }
 
+  const addStudent = (e) => {
+    e.preventDefault()
+    if (!newStudentName.trim()) return
+    const newStudent = {
+      id: students.length + 1,
+      name: newStudentName,
+      rollNumber: newStudentRollNo || 'N/A',
+      phone: newStudentPhone || 'N/A',
+      attendancePercentage: 100,
+    }
+    setStudents([...students, newStudent])
+    setNewStudentName('')
+    setNewStudentRollNo('')
+    setNewStudentPhone('')
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -39,19 +58,43 @@ export default function AttendanceDashboard() {
               <h1 className="text-2xl font-bold text-gray-900">Attendance Dashboard</h1>
               <p className="text-sm text-gray-600 mt-1">{today}</p>
             </div>
-            <Button 
-              size="lg"
-              className="bg-blue-600 hover:bg-blue-700"
-              onClick={() => setShowAttendanceMode(true)}
-            >
-              <Calendar className="h-4 w-4 mr-2" />
-              Attendance Mode
-            </Button>
+            <div className="flex items-center gap-4">
+              <Button
+                size="lg"
+                variant="outline"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                History
+              </Button>
+              <Button
+                size="lg"
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={() => setShowAttendanceMode(true)}
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Attendance Mode
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        {/* Add Student Form */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Add New Student</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={addStudent} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <input type="text" placeholder="Name" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} className="p-2 border rounded" />
+              <input type="text" placeholder="Roll Number (Optional)" value={newStudentRollNo} onChange={(e) => setNewStudentRollNo(e.target.value)} className="p-2 border rounded" />
+              <input type="text" placeholder="Phone Number (Optional)" value={newStudentPhone} onChange={(e) => setNewStudentPhone(e.target.value)} className="p-2 border rounded" />
+              <Button type="submit">Add Student</Button>
+            </form>
+          </CardContent>
+        </Card>
+
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
