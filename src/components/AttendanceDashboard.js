@@ -37,7 +37,71 @@ export default function AttendanceDashboard() {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [])
 
+  // Initialize daily absence tracking on app load
   useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const lastUpdateDate = localStorage.getItem('lastAbsenceUpdate');
+    
+    // If this is the first time or a new day, set the update date
+    if (!lastUpdateDate) {
+      localStorage.setItem('lastAbsenceUpdate', today);
+    }
+  }, [])
+
+  // Update absence notifications and daily counts
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const lastUpdateDate = localStorage.getItem('lastAbsenceUpdate');
+    
+    // Check if we need to update daily absence counts (runs once per day)
+    if (lastUpdateDate !== today && students.length > 0) {
+      const attendanceRecords = JSON.parse(localStorage.getItem('attendanceRecords') || '[]');
+      
+      const updatedStudents = students.map(student => {
+        // Check if student has consecutive absences
+        if (student.consecutiveAbsences && student.consecutiveAbsences > 0) {
+          // Check if student was marked present today
+          const todayRecord = attendanceRecords.find(record => 
+            record.date === today && record.studentId === student.id
+          );
+          
+          // If student was marked present today, reset consecutive absences
+          if (todayRecord && todayRecord.status === 'present') {
+            return {
+              ...student,
+              consecutiveAbsences: 0,
+              lastAbsenceUpdate: today
+            };
+          }
+          
+          // If no attendance record for today and it's a new day, increment absence count
+          if (!todayRecord && lastUpdateDate && lastUpdateDate < today) {
+            return {
+              ...student,
+              consecutiveAbsences: student.consecutiveAbsences + 1,
+              lastAbsenceUpdate: today
+            };
+          }
+        }
+        
+        return student;
+      });
+      
+      // Update students if there were changes
+      const hasChanges = updatedStudents.some((student, index) => 
+        student.consecutiveAbsences !== students[index]?.consecutiveAbsences
+      );
+      
+      if (hasChanges) {
+        setStudents(updatedStudents);
+        localStorage.setItem('students', JSON.stringify(updatedStudents));
+      }
+      
+      // Update the last update date
+      localStorage.setItem('lastAbsenceUpdate', today);
+    }
+
+    // Create absence notifications sorted by roll number (lowest to highest)
     const absentStudents = students
       .filter(student => student.consecutiveAbsences && student.consecutiveAbsences > 0)
       .map(student => ({
@@ -46,14 +110,35 @@ export default function AttendanceDashboard() {
         rollNumber: student.rollNumber,
         consecutiveAbsences: student.consecutiveAbsences,
         daysSinceAbsent: student.consecutiveAbsences,
-      }));
+      }))
+      .sort((a, b) => {
+        const rollA = parseInt(a.rollNumber) || 0;
+        const rollB = parseInt(b.rollNumber) || 0;
+        return rollA - rollB;
+      });
+    
     setAbsenceNotifications(absentStudents);
   }, [students]);
 
   // Calculate stats
   const totalStudents = students.length
-  const averageAttendance = Math.round(students.reduce((sum, s) => sum + s.attendancePercentage, 0) / totalStudents)
+  const averageAttendance = totalStudents > 0 ? Math.round(students.reduce((sum, s) => sum + s.attendancePercentage, 0) / totalStudents) : 0
   const studentsNeedingAttention = students.filter(s => s.attendancePercentage < 80).length
+
+  // Test function to add some absent students (for testing purposes)
+  const addTestAbsentStudents = () => {
+    const updatedStudents = students.map((student, index) => {
+      if (index < 2) { // Make first 2 students absent for testing
+        return {
+          ...student,
+          consecutiveAbsences: index + 1 // First student: 1 day, second student: 2 days
+        }
+      }
+      return student
+    })
+    setStudents(updatedStudents)
+    localStorage.setItem('students', JSON.stringify(updatedStudents))
+  }
 
   const getDaysAgoText = (days) => {
     if (days === 1) return 'Yesterday'
@@ -272,6 +357,17 @@ export default function AttendanceDashboard() {
               <p className="text-sm text-gray-600 mt-1">{today}</p>
             </div>
             <div className="flex items-center gap-4">
+              {/* Test button to demonstrate alerts */}
+              {students.length > 0 && (
+                <Button
+                  onClick={addTestAbsentStudents}
+                  variant="outline"
+                  className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                >
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  Test Alerts
+                </Button>
+              )}
               <Button
                 onClick={startAttendanceMode}
                 className="bg-green-600 hover:bg-green-700"
@@ -323,31 +419,139 @@ export default function AttendanceDashboard() {
               </div>
             </CardContent>
           </Card>
-        </div>
-        {/* Absence Notifications */}
+        </div>  
+        {/* Absence Alerts - Table Format */}
         {absenceNotifications.length > 0 && (
-          <Card className="bg-red-50 border-red-200">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-red-800 flex items-center gap-2">
-                <AlertCircle className="h-5 w-5" />
-                Absentee Alerts
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-red-500" />
+                  Absence Alerts ({absenceNotifications.length})
+                </CardTitle>
+                <div className="text-sm text-gray-600">
+                  Students requiring attention
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {absenceNotifications.map((notification) => (
-                  <div key={notification.studentId} className="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm">
-                    <div>
-                      <p className="font-semibold text-gray-900">{notification.studentName}</p>
-                      <p className="text-sm text-gray-600">Roll No: {notification.rollNumber}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-red-600">
-                        {notification.consecutiveAbsences} Day{notification.consecutiveAbsences > 1 ? 's' : ''} Absent
-                      </p>
-                    </div>
+              {/* Summary Stats */}
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="text-center p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <div className="text-2xl font-bold text-yellow-700">
+                    {absenceNotifications.filter(n => n.consecutiveAbsences === 1).length}
                   </div>
-                ))}
+                  <div className="text-sm text-yellow-600">1 Day</div>
+                </div>
+                <div className="text-center p-3 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="text-2xl font-bold text-orange-700">
+                    {absenceNotifications.filter(n => n.consecutiveAbsences === 2).length}
+                  </div>
+                  <div className="text-sm text-orange-600">2 Days</div>
+                </div>
+                <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
+                  <div className="text-2xl font-bold text-red-700">
+                    {absenceNotifications.filter(n => n.consecutiveAbsences >= 3).length}
+                  </div>
+                  <div className="text-sm text-red-600">3+ Days</div>
+                </div>
+              </div>
+
+              {/* Absence Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <th className="text-left p-3 font-semibold text-gray-700">Roll No.</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">Student Name</th>
+                      <th className="text-center p-3 font-semibold text-gray-700">Days Absent</th>
+                      <th className="text-center p-3 font-semibold text-gray-700">Risk Level</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">Action Required</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <AnimatePresence>
+                      {absenceNotifications.map((notification, index) => {
+                        const risk = getRiskLevel(notification.consecutiveAbsences)
+                        return (
+                          <motion.tr
+                            key={notification.studentId}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ delay: index * 0.1 }}
+                            className={`border-b border-gray-100 hover:bg-gray-50 ${
+                              notification.consecutiveAbsences >= 3 ? 'bg-red-25' :
+                              notification.consecutiveAbsences >= 2 ? 'bg-orange-25' :
+                              'bg-yellow-25'
+                            }`}
+                          >
+                            <td className="p-3">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${
+                                notification.consecutiveAbsences >= 3 ? 'bg-red-500' :
+                                notification.consecutiveAbsences >= 2 ? 'bg-orange-500' :
+                                'bg-yellow-500'
+                              }`}>
+                                {notification.rollNumber}
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              <div>
+                                <p className="font-semibold text-gray-900">{notification.studentName}</p>
+                                <p className="text-sm text-gray-600">Roll: {notification.rollNumber}</p>
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full font-bold text-lg ${
+                                notification.consecutiveAbsences >= 3 ? 'bg-red-100 text-red-700' :
+                                notification.consecutiveAbsences >= 2 ? 'bg-orange-100 text-orange-700' :
+                                'bg-yellow-100 text-yellow-700'
+                              }`}>
+                                {notification.consecutiveAbsences}
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {notification.consecutiveAbsences === 1 ? 'day' : 'days'}
+                              </p>
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${risk.color}`}>
+                                {risk.level}
+                              </span>
+                            </td>
+                            <td className="p-3">
+                              <div className="text-sm">
+                                {notification.consecutiveAbsences >= 3 ? (
+                                  <div className="text-red-700 font-medium">
+                                    <p>📞 Contact parent/guardian</p>
+                                    <p className="text-xs text-red-600 mt-1">Immediate intervention needed</p>
+                                  </div>
+                                ) : notification.consecutiveAbsences >= 2 ? (
+                                  <div className="text-orange-700 font-medium">
+                                    <p>⚠️ Follow up with student</p>
+                                    <p className="text-xs text-orange-600 mt-1">Check for issues</p>
+                                  </div>
+                                ) : (
+                                  <div className="text-yellow-700 font-medium">
+                                    <p>👀 Monitor closely</p>
+                                    <p className="text-xs text-yellow-600 mt-1">Will clear when present</p>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </motion.tr>
+                        )
+                      })}
+                    </AnimatePresence>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Footer Note */}
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-800">
+                  <strong>Note:</strong> Students will automatically be removed from this list when marked present. 
+                  Absence counts increase daily until attendance is taken.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -363,7 +567,13 @@ export default function AttendanceDashboard() {
               <div>
                 <h3 className="font-medium mb-3">Attendance Distribution</h3>
                 <div className="space-y-2">
-                  {students.map((student) => (
+                  {[...students]
+                    .sort((a, b) => {
+                      const rollA = parseInt(a.rollNumber) || 0;
+                      const rollB = parseInt(b.rollNumber) || 0;
+                      return rollA - rollB;
+                    })
+                    .map((student) => (
                     <div key={student.id} className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium">{student.name}</p>

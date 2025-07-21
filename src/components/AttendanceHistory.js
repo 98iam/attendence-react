@@ -28,7 +28,7 @@ export default function AttendanceHistory() {
     const handleStorageChange = () => {
       const savedStudents = localStorage.getItem('students');
       const savedRecords = localStorage.getItem('attendanceRecords');
-      
+
       if (savedStudents) {
         setStudents(JSON.parse(savedStudents));
       }
@@ -36,16 +36,16 @@ export default function AttendanceHistory() {
         setAttendanceRecords(JSON.parse(savedRecords));
       }
     };
-    
+
     window.addEventListener('storage', handleStorageChange);
-    
+
     // Also listen for custom events when attendance is taken
     const handleAttendanceUpdate = () => {
       handleStorageChange();
     };
-    
+
     window.addEventListener('attendanceUpdated', handleAttendanceUpdate);
-    
+
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('attendanceUpdated', handleAttendanceUpdate);
@@ -93,16 +93,31 @@ export default function AttendanceHistory() {
   const getDaySummary = (date) => {
     const records = getAttendanceForDate(date, selectedStudent)
     if (records.length === 0) return null
-    
+
+    // If a specific student is selected, show their individual status
+    if (selectedStudent !== 'all') {
+      const studentRecord = records.find(r => r.studentId === selectedStudent)
+      if (studentRecord) {
+        return {
+          singleStudent: true,
+          status: studentRecord.status,
+          studentName: studentRecord.studentName
+        }
+      }
+      return null
+    }
+
+    // For all students, show the count summary
     const summary = {
+      singleStudent: false,
       present: records.filter(r => r.status === 'present').length,
       absent: records.filter(r => r.status === 'absent').length,
     }
-    
+
     return summary
   }
 
-  const filteredStudents = sortedStudents.filter(student => 
+  const filteredStudents = sortedStudents.filter(student =>
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.rollNumber.includes(searchTerm)
   )
@@ -115,7 +130,7 @@ export default function AttendanceHistory() {
   const getTodayResults = () => {
     const today = new Date().toISOString().split('T')[0]
     const todayRecords = attendanceRecords.filter(record => record.date === today)
-    
+
     // Sort by roll number
     return todayRecords.sort((a, b) => {
       const rollA = parseInt(a.rollNumber) || 0
@@ -137,9 +152,9 @@ export default function AttendanceHistory() {
         setShowTodayResults(false)
       }, 5000)
     }
-    
+
     window.addEventListener('attendanceComplete', handleAttendanceComplete)
-    
+
     return () => {
       window.removeEventListener('attendanceComplete', handleAttendanceComplete)
     }
@@ -148,8 +163,8 @@ export default function AttendanceHistory() {
   const exportData = () => {
     // Export functionality would go here
     console.log('Exporting attendance data...')
-  } 
- return (
+  }
+  return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
@@ -263,28 +278,54 @@ export default function AttendanceHistory() {
                 {monthDays.map(day => {
                   const summary = getDaySummary(day)
                   const isToday = isSameDay(day, new Date())
-                  
+
+                  // For single student view, determine background color
+                  let dayBackgroundClass = 'bg-white'
+                  if (summary && summary.singleStudent) {
+                    dayBackgroundClass = summary.status === 'present' ? 'bg-green-100' : 'bg-red-100'
+                  }
+
                   return (
                     <div
                       key={day.toString()}
-                      className={`bg-white p-2 min-h-20 relative ${
-                        !isSameMonth(day, currentDate) ? 'text-gray-400' : ''
-                      } ${isToday ? 'ring-2 ring-blue-500' : ''}`}
+                      className={`${dayBackgroundClass} p-2 min-h-20 relative ${!isSameMonth(day, currentDate) ? 'text-gray-400' : ''
+                        } ${isToday ? 'ring-2 ring-blue-500' : ''}`}
                     >
                       <div className="text-sm font-medium mb-1">{format(day, 'd')}</div>
                       {summary && (
                         <div className="space-y-1">
-                          {summary.present > 0 && (
-                            <div className="flex items-center gap-1">
-                              <div className="w-2 h-2 bg-green-500 rounded-full" />
-                              <span className="text-xs">{summary.present}</span>
+                          {summary.singleStudent ? (
+                            // Single student view - show large status indicator
+                            <div className="flex flex-col items-center justify-center h-12">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${summary.status === 'present' ? 'bg-green-500' : 'bg-red-500'
+                                }`}>
+                                {summary.status === 'present' ? (
+                                  <Check className="h-4 w-4 text-white" />
+                                ) : (
+                                  <X className="h-4 w-4 text-white" />
+                                )}
+                              </div>
+                              <span className={`text-xs font-medium mt-1 ${summary.status === 'present' ? 'text-green-700' : 'text-red-700'
+                                }`}>
+                                {summary.status === 'present' ? 'P' : 'A'}
+                              </span>
                             </div>
-                          )}
-                          {summary.absent > 0 && (
-                            <div className="flex items-center gap-1">
-                              <div className="w-2 h-2 bg-red-500 rounded-full" />
-                              <span className="text-xs">{summary.absent}</span>
-                            </div>
+                          ) : (
+                            // All students view - show counts
+                            <>
+                              {summary.present > 0 && (
+                                <div className="flex items-center gap-1">
+                                  <div className="w-2 h-2 bg-green-500 rounded-full" />
+                                  <span className="text-xs">{summary.present}</span>
+                                </div>
+                              )}
+                              {summary.absent > 0 && (
+                                <div className="flex items-center gap-1">
+                                  <div className="w-2 h-2 bg-red-500 rounded-full" />
+                                  <span className="text-xs">{summary.absent}</span>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       )}
@@ -292,7 +333,7 @@ export default function AttendanceHistory() {
                   )
                 })}
               </div>
-              
+
               {/* Legend */}
               <div className="mt-4 flex flex-wrap gap-4 text-sm">
                 <div className="flex items-center gap-2">
@@ -332,10 +373,9 @@ export default function AttendanceHistory() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-gray-600">{format(new Date(record.date), 'MMM d, yyyy')}</p>
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                          record.status === 'present' ? 'bg-green-100 text-green-800' :
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${record.status === 'present' ? 'bg-green-100 text-green-800' :
                           'bg-red-100 text-red-800'
-                        }`}>
+                          }`}>
                           {getStatusIcon(record.status)}
                           {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
                         </span>
