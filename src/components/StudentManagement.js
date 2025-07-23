@@ -2,14 +2,13 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Button } from "./ui/button"
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Edit, Trash2, User, Search, X, ArrowLeft } from 'lucide-react'
+import { Plus, Edit, Trash2, User, Search, X, ArrowLeft, Loader2, Wifi } from 'lucide-react'
 import StudentProfile from './StudentProfile'
+import { studentAPI, testConnection, testStudentCreation } from '../lib/api'
 
 export default function StudentManagement() {
-  const [students, setStudents] = useState(() => {
-    const savedStudents = localStorage.getItem('students');
-    return savedStudents ? JSON.parse(savedStudents) : [];
-  });
+  const [students, setStudents] = useState([])
+  const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingStudent, setEditingStudent] = useState(null)
   const [selectedStudent, setSelectedStudent] = useState(null)
@@ -20,35 +19,61 @@ export default function StudentManagement() {
     phone: ''
   })
 
+  // Load students from Supabase
   useEffect(() => {
-    localStorage.setItem('students', JSON.stringify(students));
-  }, [students]);
+    loadStudents()
+  }, [])
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-
-    if (editingStudent) {
-      // Update existing student
-      setStudents(students.map(student =>
-        student.id === editingStudent.id
-          ? { ...student, ...formData }
-          : student
-      ))
-      setEditingStudent(null)
-    } else {
-      // Add new student
-      const newStudent = {
-        id: Date.now().toString(),
-        ...formData,
-        attendancePercentage: 0,
-        totalClasses: 0,
-        presentClasses: 0
-      }
-      setStudents([...students, newStudent])
+  const loadStudents = async () => {
+    try {
+      setLoading(true)
+      const data = await studentAPI.getAll()
+      // Transform data to match existing component structure
+      const transformedData = data.map(student => ({
+        id: student.id,
+        name: student.name,
+        rollNumber: student.roll_number,
+        phone: student.phone || '',
+        email: student.email || '',
+        attendancePercentage: student.attendance_percentage || 0,
+        totalClasses: student.total_classes || 0,
+        presentClasses: student.present_classes || 0,
+        consecutiveAbsences: student.consecutive_absences || 0
+      }))
+      setStudents(transformedData)
+    } catch (error) {
+      console.error('Error loading students:', error)
+      alert('Failed to load students. Please try again.')
+    } finally {
+      setLoading(false)
     }
+  }
 
-    setFormData({ name: '', rollNumber: '', phone: '' })
-    setShowAddForm(false)
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+
+    try {
+      if (editingStudent) {
+        // Update existing student
+        await studentAPI.update(editingStudent.id, formData)
+      } else {
+        // Add new student
+        await studentAPI.create(formData)
+      }
+      
+      // Reload students from database
+      await loadStudents()
+      
+      setFormData({ name: '', rollNumber: '', phone: '' })
+      setEditingStudent(null)
+      setShowAddForm(false)
+    } catch (error) {
+      console.error('Error saving student:', error)
+      alert('Failed to save student. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleEdit = (student) => {
@@ -61,9 +86,18 @@ export default function StudentManagement() {
     setShowAddForm(true)
   }
 
-  const handleDelete = (studentId) => {
+  const handleDelete = async (studentId) => {
     if (window.confirm('Are you sure you want to delete this student?')) {
-      setStudents(students.filter(student => student.id !== studentId))
+      try {
+        setLoading(true)
+        await studentAPI.delete(studentId)
+        await loadStudents() // Reload the list
+      } catch (error) {
+        console.error('Error deleting student:', error)
+        alert('Failed to delete student. Please try again.')
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
@@ -101,13 +135,45 @@ export default function StudentManagement() {
               <h1 className="text-2xl font-bold text-gray-900">Student Management</h1>
               <p className="text-sm text-gray-600 mt-1">Add and manage students in your classroom</p>
             </div>
-            <Button
-              onClick={() => setShowAddForm(true)}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Student
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={async () => {
+                  const result = await testConnection()
+                  if (result.success) {
+                    alert('✅ Supabase connection successful!')
+                  } else {
+                    alert(`❌ Connection failed: ${result.error}`)
+                  }
+                }}
+                variant="outline"
+                className="text-green-600 border-green-300 hover:bg-green-50"
+              >
+                <Wifi className="h-4 w-4 mr-2" />
+                Test Connection
+              </Button>
+              <Button
+                onClick={async () => {
+                  const result = await testStudentCreation()
+                  if (result.success) {
+                    alert('✅ Student creation test passed!')
+                    await loadStudents() // Refresh the list
+                  } else {
+                    alert(`❌ Student creation failed: ${result.error}`)
+                  }
+                }}
+                variant="outline"
+                className="text-orange-600 border-orange-300 hover:bg-orange-50"
+              >
+                Test Create
+              </Button>
+              <Button
+                onClick={() => setShowAddForm(true)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Student
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -135,7 +201,12 @@ export default function StudentManagement() {
             <CardTitle className="text-lg">Students ({students.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {filteredStudents.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-8 w-8 text-blue-600 mx-auto mb-4 animate-spin" />
+                <p className="text-gray-500">Loading students...</p>
+              </div>
+            ) : filteredStudents.length === 0 ? (
               <div className="text-center py-8">
                 <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500 mb-2">

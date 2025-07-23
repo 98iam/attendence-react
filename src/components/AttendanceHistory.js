@@ -2,8 +2,9 @@ import { useState, useMemo, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Button } from "./ui/button"
 import { motion, AnimatePresence } from 'framer-motion'
-import { Calendar, ChevronLeft, ChevronRight, Download, Filter, Search, User, Clock, Check, X } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Download, Filter, Search, User, Clock, Check, X, Loader2 } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns'
+import { studentAPI, attendanceAPI } from '../lib/api'
 
 export default function AttendanceHistory() {
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -12,44 +13,66 @@ export default function AttendanceHistory() {
   const [viewMode, setViewMode] = useState('calendar')
   const [showTodayResults, setShowTodayResults] = useState(false)
 
-  // Real data from localStorage
-  const [students, setStudents] = useState(() => {
-    const savedStudents = localStorage.getItem('students');
-    return savedStudents ? JSON.parse(savedStudents) : [];
-  })
+  // Real data from Supabase
+  const [students, setStudents] = useState([])
+  const [attendanceRecords, setAttendanceRecords] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const [attendanceRecords, setAttendanceRecords] = useState(() => {
-    const savedRecords = localStorage.getItem('attendanceRecords');
-    return savedRecords ? JSON.parse(savedRecords) : [];
-  })
-
-  // Listen for localStorage changes to sync data
+  // Load data from Supabase
   useEffect(() => {
-    const handleStorageChange = () => {
-      const savedStudents = localStorage.getItem('students');
-      const savedRecords = localStorage.getItem('attendanceRecords');
+    loadData()
+  }, [])
 
-      if (savedStudents) {
-        setStudents(JSON.parse(savedStudents));
-      }
-      if (savedRecords) {
-        setAttendanceRecords(JSON.parse(savedRecords));
-      }
-    };
+  const loadData = async () => {
+    try {
+      setLoading(true)
+      const [studentsData, recordsData] = await Promise.all([
+        studentAPI.getAll(),
+        attendanceAPI.getAll()
+      ])
+      
+      // Transform students data
+      const transformedStudents = studentsData.map(student => ({
+        id: student.id,
+        name: student.name,
+        rollNumber: student.roll_number,
+        phone: student.phone || '',
+        email: student.email || '',
+        attendancePercentage: student.attendance_percentage || 0,
+        totalClasses: student.total_classes || 0,
+        presentClasses: student.present_classes || 0,
+        consecutiveAbsences: student.consecutive_absences || 0
+      }))
+      
+      // Transform attendance records data
+      const transformedRecords = recordsData.map(record => ({
+        date: record.date,
+        status: record.status,
+        studentId: record.student_id,
+        studentName: record.students?.name || '',
+        rollNumber: record.students?.roll_number || ''
+      }))
+      
+      setStudents(transformedStudents)
+      setAttendanceRecords(transformedRecords)
+    } catch (error) {
+      console.error('Error loading data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-    window.addEventListener('storage', handleStorageChange);
-
-    // Also listen for custom events when attendance is taken
+  // Listen for custom events when attendance is taken
+  useEffect(() => {
     const handleAttendanceUpdate = () => {
-      handleStorageChange();
-    };
+      loadData()
+    }
 
-    window.addEventListener('attendanceUpdated', handleAttendanceUpdate);
+    window.addEventListener('attendanceUpdated', handleAttendanceUpdate)
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('attendanceUpdated', handleAttendanceUpdate);
-    };
+      window.removeEventListener('attendanceUpdated', handleAttendanceUpdate)
+    }
   }, [])
 
   // Sort students by roll number for consistent ordering
@@ -240,7 +263,16 @@ export default function AttendanceHistory() {
           </CardContent>
         </Card>
 
-        {viewMode === 'calendar' ? (
+        {loading ? (
+          <Card>
+            <CardContent className="p-8">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 text-blue-600 mx-auto mb-4 animate-spin" />
+                <p className="text-gray-500">Loading attendance data...</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : viewMode === 'calendar' ? (
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
