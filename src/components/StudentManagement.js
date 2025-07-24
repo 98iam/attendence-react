@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Button } from "./ui/button"
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Edit, Trash2, User, Search, X, ArrowLeft, Loader2, Wifi } from 'lucide-react'
+import { Plus, Edit, Trash2, User, Search, X, Loader2 } from 'lucide-react'
 import StudentProfile from './StudentProfile'
-import { studentAPI, testConnection, testStudentCreation } from '../lib/api'
+import { studentAPI } from '../lib/api'
 
 export default function StudentManagement() {
   const [students, setStudents] = useState([])
@@ -136,36 +136,6 @@ export default function StudentManagement() {
               <p className="text-sm text-gray-600 mt-1">Add and manage students in your classroom</p>
             </div>
             <div className="flex gap-2">
-              <Button
-                onClick={async () => {
-                  const result = await testConnection()
-                  if (result.success) {
-                    alert('✅ Supabase connection successful!')
-                  } else {
-                    alert(`❌ Connection failed: ${result.error}`)
-                  }
-                }}
-                variant="outline"
-                className="text-green-600 border-green-300 hover:bg-green-50"
-              >
-                <Wifi className="h-4 w-4 mr-2" />
-                Test Connection
-              </Button>
-              <Button
-                onClick={async () => {
-                  const result = await testStudentCreation()
-                  if (result.success) {
-                    alert('✅ Student creation test passed!')
-                    await loadStudents() // Refresh the list
-                  } else {
-                    alert(`❌ Student creation failed: ${result.error}`)
-                  }
-                }}
-                variant="outline"
-                className="text-orange-600 border-orange-300 hover:bg-orange-50"
-              >
-                Test Create
-              </Button>
               <Button
                 onClick={() => setShowAddForm(true)}
                 className="bg-blue-600 hover:bg-blue-700"

@@ -46,7 +46,158 @@ export const testStudentCreation = async () => {
     return { success: true, message: 'Student creation test passed' }
   } catch (error) {
     console.error('Student creation test failed:', error)
-    return { success: false, error: error.message }
+    console.error('Full error details:', error)
+    return { success: false, error: error.message, details: error }
+  }
+}
+
+// Debug function to check table structure
+export const debugTableStructure = async () => {
+  try {
+    console.log('Checking table structure...')
+    
+    // Try to get table info
+    const { data, error } = await supabase
+      .from('students')
+      .select('*')
+      .limit(0)
+    
+    if (error) {
+      console.error('Table structure check failed:', error)
+      return { success: false, error: error.message, details: error }
+    }
+    
+    console.log('Table exists and is accessible')
+    return { success: true }
+  } catch (err) {
+    console.error('Debug error:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+// Test RLS and permissions
+export const testRLSPermissions = async () => {
+  try {
+    console.log('Testing RLS permissions...')
+    
+    // Test SELECT permission
+    const { data: selectData, error: selectError } = await supabase
+      .from('students')
+      .select('*')
+      .limit(1)
+    
+    if (selectError) {
+      console.error('SELECT permission failed:', selectError)
+      return { success: false, error: `SELECT failed: ${selectError.message}`, details: selectError }
+    }
+    
+    console.log('SELECT permission OK')
+    
+    // Test INSERT permission with minimal data
+    const testData = {
+      name: 'RLS Test Student',
+      roll_number: 'RLS_TEST_' + Date.now()
+    }
+    
+    const { data: insertData, error: insertError } = await supabase
+      .from('students')
+      .insert([testData])
+      .select()
+      .single()
+    
+    if (insertError) {
+      console.error('INSERT permission failed:', insertError)
+      return { 
+        success: false, 
+        error: `INSERT failed: ${insertError.message}`, 
+        details: insertError,
+        hint: insertError.hint || 'Check Row Level Security policies'
+      }
+    }
+    
+    console.log('INSERT permission OK, created:', insertData)
+    
+    // Clean up the test record
+    if (insertData?.id) {
+      await supabase.from('students').delete().eq('id', insertData.id)
+      console.log('Test record cleaned up')
+    }
+    
+    return { success: true, message: 'All permissions working correctly' }
+  } catch (err) {
+    console.error('RLS test error:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+// Test attendance table and permissions
+export const testAttendanceTable = async () => {
+  try {
+    console.log('Testing attendance_records table...')
+    
+    // Test if table exists and is accessible
+    const { data: selectData, error: selectError } = await supabase
+      .from('attendance_records')
+      .select('*')
+      .limit(1)
+    
+    if (selectError) {
+      console.error('Attendance table access failed:', selectError)
+      return { 
+        success: false, 
+        error: `Table access failed: ${selectError.message}`, 
+        details: selectError,
+        hint: selectError.code === '42P01' ? 'Table does not exist' : 'Check permissions'
+      }
+    }
+    
+    console.log('Attendance table accessible')
+    
+    // Get a test student to use for attendance test
+    const { data: students, error: studentsError } = await supabase
+      .from('students')
+      .select('id')
+      .limit(1)
+    
+    if (studentsError || !students || students.length === 0) {
+      return { success: false, error: 'No students found for testing' }
+    }
+    
+    // Test INSERT permission with attendance record
+    const testAttendanceData = {
+      student_id: students[0].id,
+      date: new Date().toISOString().split('T')[0],
+      status: 'present'
+    }
+    
+    const { data: insertData, error: insertError } = await supabase
+      .from('attendance_records')
+      .insert([testAttendanceData])
+      .select()
+      .single()
+    
+    if (insertError) {
+      console.error('Attendance INSERT failed:', insertError)
+      return { 
+        success: false, 
+        error: `INSERT failed: ${insertError.message}`, 
+        details: insertError,
+        hint: insertError.hint || 'Check Row Level Security policies for attendance_records table'
+      }
+    }
+    
+    console.log('Attendance INSERT OK, created:', insertData)
+    
+    // Clean up the test record
+    if (insertData?.id) {
+      await supabase.from('attendance_records').delete().eq('id', insertData.id)
+      console.log('Test attendance record cleaned up')
+    }
+    
+    return { success: true, message: 'Attendance table working correctly' }
+  } catch (err) {
+    console.error('Attendance table test error:', err)
+    return { success: false, error: err.message }
   }
 }
 
