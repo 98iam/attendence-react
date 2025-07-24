@@ -679,9 +679,6 @@ export default function AttendanceDashboard() {
 
                             const cardStyle = {
                               zIndex: index,
-                              transform: `scale(${1 - (swipeStudents.length - 1 - index) * 0.05}) translateY(${(swipeStudents.length - 1 - index) * 10}px)${isTopCard && dragState.isDragging ? ` translateY(${dragState.deltaY}px)` : ''
-                                }`,
-                              transition: dragState.isDragging && isTopCard ? 'none' : 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                               cursor: isTopCard ? (dragState.isDragging ? 'grabbing' : 'grab') : 'default',
                               touchAction: 'none'
                             };
@@ -693,9 +690,18 @@ export default function AttendanceDashboard() {
                                 style={cardStyle}
                                 onPointerDown={isTopCard ? handlePointerDown : undefined}
                                 initial={{ y: 50, opacity: 0 }}
-                                animate={{ y: 0, opacity: 1 }}
+                                animate={{
+                                  y: (swipeStudents.length - 1 - index) * 10 + (isTopCard ? dragState.deltaY : 0),
+                                  scale: 1 - (swipeStudents.length - 1 - index) * 0.05,
+                                  opacity: 1
+                                }}
                                 exit={{ y: -50, opacity: 0 }}
-                                transition={{ duration: 0.3 }}
+                                transition={{
+                                  type: dragState.isDragging && isTopCard ? 'tween' : 'spring',
+                                  stiffness: 300,
+                                  damping: 30,
+                                  duration: dragState.isDragging && isTopCard ? 0 : 0.3
+                                }}
                               >
                                 {/* Present Feedback Overlay */}
                                 <div
