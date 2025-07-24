@@ -51,24 +51,199 @@ export const testStudentCreation = async () => {
   }
 }
 
-// Debug function to check table structure
-export const debugTableStructure = async () => {
+// Reset student attendance stats to zero
+export const resetStudentAttendance = async (studentId) => {
   try {
-    console.log('Checking table structure...')
+    console.log('Resetting attendance for student:', studentId)
     
-    // Try to get table info
+    // Reset student stats to zero
     const { data, error } = await supabase
       .from('students')
-      .select('*')
-      .limit(0)
+      .update({
+        total_classes: 0,
+        present_classes: 0,
+        attendance_percentage: 0,
+        consecutive_absences: 0,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', studentId)
+      .select()
+      .single()
     
     if (error) {
-      console.error('Table structure check failed:', error)
-      return { success: false, error: error.message, details: error }
+      console.error('Error resetting attendance:', error)
+      return { success: false, error: error.message }
     }
     
-    console.log('Table exists and is accessible')
-    return { success: true }
+    console.log('Attendance reset successfully:', data)
+    return { success: true, data }
+  } catch (err) {
+    console.error('Reset error:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+// COMPLETE RESET: Clear all attendance data and start fresh
+export const resetAllAttendanceData = async () => {
+  try {
+    console.log('🔄 Starting complete attendance reset...')
+    
+    // Step 1: Delete ALL attendance records
+    const { error: deleteRecordsError } = await supabase
+      .from('attendance_records')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all records
+    
+    if (deleteRecordsError) {
+      console.error('Error deleting attendance records:', deleteRecordsError)
+      return { success: false, error: `Failed to delete attendance records: ${deleteRecordsError.message}` }
+    }
+    
+    console.log('✅ All attendance records deleted')
+    
+    // Step 2: Reset ALL student attendance stats to zero
+    const { data: students, error: studentsError } = await supabase
+      .from('students')
+      .select('id, name')
+    
+    if (studentsError) {
+      console.error('Error fetching students:', studentsError)
+      return { success: false, error: `Failed to fetch students: ${studentsError.message}` }
+    }
+    
+    if (!students || students.length === 0) {
+      return { success: true, message: 'No students found, but attendance records cleared' }
+    }
+    
+    // Reset all students' attendance stats to zero
+    const { error: updateError } = await supabase
+      .from('students')
+      .update({
+        total_classes: 0,
+        present_classes: 0,
+        attendance_percentage: 0,
+        consecutive_absences: 0,
+        updated_at: new Date().toISOString()
+      })
+      .neq('id', '00000000-0000-0000-0000-000000000000') // Update all students
+    
+    if (updateError) {
+      console.error('Error resetting student stats:', updateError)
+      return { success: false, error: `Failed to reset student stats: ${updateError.message}` }
+    }
+    
+    console.log(`✅ Reset attendance stats for ${students.length} students`)
+    
+    return {
+      success: true,
+      message: `🎉 Complete reset successful!`,
+      details: {
+        attendanceRecordsDeleted: 'All',
+        studentsReset: students.length,
+        studentsAffected: students.map(s => s.name)
+      }
+    }
+  } catch (err) {
+    console.error('Complete reset error:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+// Debug function to check student attendance data
+export const debugStudentAttendance = async (studentId) => {
+  try {
+    console.log('Debugging student attendance for ID:', studentId)
+    
+    // Get student data
+    const { data: studentData, error: studentError } = await supabase
+      .from('students')
+      .select('*')
+      .eq('id', studentId)
+      .single()
+    
+    if (studentError) {
+      console.error('Error fetching student:', studentError)
+      return { success: false, error: studentError.message }
+    }
+    
+    console.log('Student data:', studentData)
+    
+    // Get attendance records for this student
+    const { data: attendanceData, error: attendanceError } = await supabase
+      .from('attendance_records')
+      .select('*')
+      .eq('student_id', studentId)
+      .order('date', { ascending: false })
+    
+    if (attendanceError) {
+      console.error('Error fetching attendance records:', attendanceError)
+      return { success: false, error: attendanceError.message }
+    }
+    
+    console.log('Attendance records:', attendanceData)
+    
+    // Check for duplicate dates
+    const dateGroups = {}
+    attendanceData.forEach(record => {
+      if (!dateGroups[record.date]) {
+        dateGroups[record.date] = []
+      }
+      dateGroups[record.date].push(record)
+    })
+    
+    const duplicateDates = Object.entries(dateGroups).filter(([date, records]) => records.length > 1)
+    
+    console.log('Date groups:', dateGroups)
+    console.log('Duplicate dates found:', duplicateDates)
+    
+    // Calculate actual stats from records
+    const totalRecords = attendanceData.length
+    const presentRecords = attendanceData.filter(record => record.status === 'present').length
+    const actualPercentage = totalRecords > 0 ? Math.round((presentRecords / totalRecords) * 100) : 0
+    
+    // Calculate unique date stats (removing duplicates)
+    const uniqueDates = Object.keys(dateGroups).length
+    const uniquePresentDates = Object.values(dateGroups).filter(records => 
+      records.some(record => record.status === 'present')
+    ).length
+    const uniquePercentage = uniqueDates > 0 ? Math.round((uniquePresentDates / uniqueDates) * 100) : 0
+    
+    console.log('Raw stats:')
+    console.log('- Total records:', totalRecords)
+    console.log('- Present records:', presentRecords)
+    console.log('- Raw percentage:', actualPercentage)
+    
+    console.log('Unique date stats:')
+    console.log('- Unique dates:', uniqueDates)
+    console.log('- Present dates:', uniquePresentDates)
+    console.log('- Unique percentage:', uniquePercentage)
+    
+    console.log('Stored stats:')
+    console.log('- Stored total_classes:', studentData.total_classes)
+    console.log('- Stored present_classes:', studentData.present_classes)
+    console.log('- Stored attendance_percentage:', studentData.attendance_percentage)
+    
+    return {
+      success: true,
+      studentData,
+      attendanceRecords: attendanceData,
+      duplicateDates,
+      calculatedStats: {
+        total: totalRecords,
+        present: presentRecords,
+        percentage: actualPercentage
+      },
+      uniqueStats: {
+        total: uniqueDates,
+        present: uniquePresentDates,
+        percentage: uniquePercentage
+      },
+      storedStats: {
+        total: studentData.total_classes || 0,
+        present: studentData.present_classes || 0,
+        percentage: studentData.attendance_percentage || 0
+      }
+    }
   } catch (err) {
     console.error('Debug error:', err)
     return { success: false, error: err.message }
@@ -354,10 +529,33 @@ export const attendanceAPI = {
 
 // Combined functions for attendance operations
 export const attendanceOperations = {
-  // Take attendance for all students
+  // Take attendance for all students (only once per day)
   async takeAttendance(attendanceData) {
     try {
       const today = new Date().toISOString().split('T')[0]
+      
+      // First, check if attendance has already been taken today
+      const { data: existingRecords, error: checkError } = await supabase
+        .from('attendance_records')
+        .select('student_id')
+        .eq('date', today)
+      
+      if (checkError) {
+        console.error('Error checking existing attendance:', checkError)
+        throw new Error(`Failed to check existing attendance: ${checkError.message}`)
+      }
+      
+      // If there are existing records for today, prevent duplicate attendance
+      if (existingRecords && existingRecords.length > 0) {
+        const existingStudentIds = existingRecords.map(record => record.student_id)
+        const duplicateStudents = Object.keys(attendanceData).filter(studentId => 
+          existingStudentIds.includes(studentId)
+        )
+        
+        if (duplicateStudents.length > 0) {
+          throw new Error(`Attendance has already been taken today for ${duplicateStudents.length} student(s). Only one attendance per day is allowed.`)
+        }
+      }
       
       // Prepare attendance records
       const attendanceRecords = Object.entries(attendanceData).map(([studentId, status]) => ({
@@ -369,28 +567,52 @@ export const attendanceOperations = {
       // Insert attendance records
       await attendanceAPI.createBatch(attendanceRecords)
       
-      // Update student statistics
+      // Update student statistics - but only calculate from actual unique dates
       const students = await studentAPI.getAll()
       
       for (const [studentId, status] of Object.entries(attendanceData)) {
         const student = students.find(s => s.id === studentId)
         if (student) {
-          const newTotalClasses = (student.total_classes || 0) + 1
-          const newPresentClasses = (student.present_classes || 0) + (status === 'present' ? 1 : 0)
-          const newAttendancePercentage = Math.round((newPresentClasses / newTotalClasses) * 100)
+          // Get all attendance records for this student to calculate accurate stats
+          const { data: studentRecords, error: recordsError } = await supabase
+            .from('attendance_records')
+            .select('date, status')
+            .eq('student_id', studentId)
           
-          let consecutiveAbsences = student.consecutive_absences || 0
-          if (status === 'absent') {
-            consecutiveAbsences++
-          } else {
-            consecutiveAbsences = 0
+          if (recordsError) {
+            console.error('Error fetching student records:', recordsError)
+            continue
+          }
+          
+          // Group by date to handle any existing duplicates and count unique dates only
+          const uniqueDates = {}
+          studentRecords.forEach(record => {
+            // For each date, if there are multiple records, prioritize 'present' over 'absent'
+            if (!uniqueDates[record.date] || record.status === 'present') {
+              uniqueDates[record.date] = record.status
+            }
+          })
+          
+          const totalUniqueDays = Object.keys(uniqueDates).length
+          const presentDays = Object.values(uniqueDates).filter(status => status === 'present').length
+          const attendancePercentage = totalUniqueDays > 0 ? Math.round((presentDays / totalUniqueDays) * 100) : 0
+          
+          // Calculate consecutive absences
+          const sortedDates = Object.keys(uniqueDates).sort().reverse() // Most recent first
+          let consecutiveAbsences = 0
+          for (const date of sortedDates) {
+            if (uniqueDates[date] === 'absent') {
+              consecutiveAbsences++
+            } else {
+              break // Stop counting when we hit a present day
+            }
           }
           
           await studentAPI.updateAttendanceStats(
             studentId,
-            newTotalClasses,
-            newPresentClasses,
-            newAttendancePercentage,
+            totalUniqueDays,
+            presentDays,
+            attendancePercentage,
             consecutiveAbsences
           )
         }

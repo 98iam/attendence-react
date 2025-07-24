@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Button } from "./ui/button"
 import { motion } from 'framer-motion'
-import { Phone, Mail, Calendar, TrendingUp, Check, X, ArrowLeft } from 'lucide-react'
+import { Phone, Mail, Calendar, TrendingUp, ArrowLeft } from 'lucide-react'
 
 export default function StudentProfile({ student, onBack }) {
   const selectedStudent = {
