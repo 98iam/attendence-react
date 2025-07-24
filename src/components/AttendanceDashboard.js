@@ -254,17 +254,18 @@ export default function AttendanceDashboard() {
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Attendance Dashboard</h1>
-              <p className="text-sm text-gray-600 mt-1">{today}</p>
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900">Attendance Dashboard</h1>
+              <p className="text-xs md:text-sm text-gray-600 mt-1">{today}</p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               <Button
                 onClick={startAttendanceMode}
                 className="bg-green-600 hover:bg-green-700"
                 disabled={students.length === 0}
+                size="sm"
               >
-                <Check className="h-4 w-4 mr-2" />
-                Take Attendance
+                <Check className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">Take Attendance</span>
               </Button>
             </div>
           </div>
@@ -284,15 +285,15 @@ export default function AttendanceDashboard() {
         ) : (
           <>
             {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-blue-800">Total Students</p>
-                      <p className="text-2xl font-bold text-blue-900">{totalStudents}</p>
+                      <p className="text-xs md:text-sm font-medium text-blue-800">Total Students</p>
+                      <p className="text-lg md:text-2xl font-bold text-blue-900">{totalStudents}</p>
                     </div>
-                    <Users className="h-8 w-8 text-blue-600" />
+                    <Users className="h-6 w-6 md:h-8 md:w-8 text-blue-600" />
                   </div>
                 </CardContent>
               </Card>
@@ -301,22 +302,22 @@ export default function AttendanceDashboard() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-green-800">Average Attendance</p>
-                      <p className="text-2xl font-bold text-green-900">{averageAttendance}%</p>
+                      <p className="text-xs md:text-sm font-medium text-green-800">Avg. Attendance</p>
+                      <p className="text-lg md:text-2xl font-bold text-green-900">{averageAttendance}%</p>
                     </div>
-                    <TrendingUp className="h-8 w-8 text-green-600" />
+                    <TrendingUp className="h-6 w-6 md:h-8 md:w-8 text-green-600" />
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200">
+              <Card className="col-span-2 md:col-span-1 bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-orange-800">Need Attention</p>
-                      <p className="text-2xl font-bold text-orange-900">{studentsNeedingAttention}</p>
+                      <p className="text-xs md:text-sm font-medium text-orange-800">Need Attention</p>
+                      <p className="text-lg md:text-2xl font-bold text-orange-900">{studentsNeedingAttention}</p>
                     </div>
-                    <AlertCircle className="h-8 w-8 text-orange-600" />
+                    <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-orange-600" />
                   </div>
                 </CardContent>
               </Card>
@@ -367,13 +368,13 @@ export default function AttendanceDashboard() {
                         <h3 className="font-medium mb-3">Quick Insights</h3>
                         <div className="space-y-3">
                           <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                            <span className="text-sm">Excellent Attendance (90%+)</span>
+                            <span className="text-sm">Excellent (90%+)</span>
                             <span className="font-semibold text-green-700">
                               {students.filter(s => s.attendancePercentage >= 90).length}
                             </span>
                           </div>
                           <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
-                            <span className="text-sm">Good Attendance (80-89%)</span>
+                            <span className="text-sm">Good (80-89%)</span>
                             <span className="font-semibold text-yellow-700">
                               {students.filter(s => s.attendancePercentage >= 80 && s.attendancePercentage < 90).length}
                             </span>
@@ -521,10 +522,10 @@ export default function AttendanceDashboard() {
                   onClick={() => setShowResults(false)}
                 >
                   <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto"
+                    initial={{ y: '100vh' }}
+                    animate={{ y: 0 }}
+                    exit={{ y: '100vh' }}
+                    className="bg-white rounded-t-lg md:rounded-lg p-6 max-w-2xl w-full h-full md:h-auto md:max-h-[80vh] overflow-y-auto"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="flex items-center justify-between mb-6">
@@ -614,9 +615,10 @@ export default function AttendanceDashboard() {
             <AnimatePresence>
               {showAttendanceMode && (
                 <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
+                  initial={{ y: '100vh' }}
+                  animate={{ y: 0 }}
+                  exit={{ y: '100vh' }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                   className="fixed inset-0 bg-gray-100 z-50 flex flex-col"
                   style={{
                     fontFamily: 'Poppins, sans-serif',
@@ -624,10 +626,10 @@ export default function AttendanceDashboard() {
                   }}
                 >
                   {/* Header */}
-                  <div className="flex items-center justify-between p-6 bg-white shadow-sm">
+                  <div className="flex items-center justify-between p-4 bg-white shadow-sm">
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-800">Mark Attendance</h2>
-                      <p className="text-gray-600">
+                      <h2 className="text-lg font-bold text-gray-800">Mark Attendance</h2>
+                      <p className="text-sm text-gray-600">
                         {swipeStudents.length === 0 ? 'All Done!' : `${students.length - swipeStudents.length + 1} of ${students.length}`}
                       </p>
                     </div>
@@ -641,11 +643,13 @@ export default function AttendanceDashboard() {
                   </div>
 
                   {/* Progress Bar */}
-                  <div className="px-6 py-4 bg-white border-b">
+                  <div className="px-4 py-3 bg-white border-b">
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${((students.length - swipeStudents.length) / students.length) * 100}%` }}
+                      <motion.div
+                        className="bg-blue-500 h-2 rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${((students.length - swipeStudents.length) / students.length) * 100}%` }}
+                        transition={{ duration: 0.5, ease: 'easeInOut' }}
                       />
                     </div>
                   </div>
@@ -683,11 +687,15 @@ export default function AttendanceDashboard() {
                             };
 
                             return (
-                              <div
+                              <motion.div
                                 key={student.id}
                                 className="absolute inset-0 bg-white rounded-3xl shadow-lg overflow-hidden"
                                 style={cardStyle}
                                 onPointerDown={isTopCard ? handlePointerDown : undefined}
+                                initial={{ y: 50, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                exit={{ y: -50, opacity: 0 }}
+                                transition={{ duration: 0.3 }}
                               >
                                 {/* Present Feedback Overlay */}
                                 <div
@@ -733,7 +741,7 @@ export default function AttendanceDashboard() {
                                     </div>
                                   </div>
                                 </div>
-                              </div>
+                              </motion.div>
                             );
                           })
                         )}

@@ -11,7 +11,7 @@ export default function Navigation({ currentView, onViewChange }) {
   ]
 
   return (
-    <nav className="bg-white shadow-sm border-b">
+    <nav className="hidden md:block bg-white shadow-sm border-b">
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-2">

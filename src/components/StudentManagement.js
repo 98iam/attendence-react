@@ -132,16 +132,17 @@ export default function StudentManagement() {
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Student Management</h1>
-              <p className="text-sm text-gray-600 mt-1">Add and manage students in your classroom</p>
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900">Student Management</h1>
+              <p className="text-xs md:text-sm text-gray-600 mt-1">Add and manage students</p>
             </div>
             <div className="flex gap-2">
               <Button
                 onClick={() => setShowAddForm(true)}
                 className="bg-blue-600 hover:bg-blue-700"
+                size="sm"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Student
+                <Plus className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">Add Student</span>
               </Button>
             </div>
           </div>
@@ -156,7 +157,7 @@ export default function StudentManagement() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <input
                 type="text"
-                placeholder="Search students by name or roll number..."
+                placeholder="Search students..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -193,27 +194,24 @@ export default function StudentManagement() {
                     key={student.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow cursor-pointer"
+                    className="flex items-center justify-between p-3 md:p-4 border rounded-lg hover:shadow-md transition-shadow cursor-pointer"
                     onClick={() => handleStudentClick(student)}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-lg font-semibold text-blue-600">
+                    <div className="flex items-center gap-3 md:gap-4">
+                      <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-md md:text-lg font-semibold text-blue-600">
                           {student.name.split(' ').map(n => n[0]).join('')}
                         </span>
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-900">{student.name}</h3>
                         <p className="text-sm text-gray-600">Roll No: {student.rollNumber}</p>
-                        {student.phone && (
-                          <p className="text-sm text-gray-500">{student.phone}</p>
-                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="text-right mr-4">
-                        <p className="text-sm font-medium">Attendance</p>
-                        <p className="text-lg font-bold text-blue-600">
+                      <div className="text-right mr-2 md:mr-4">
+                        <p className="text-xs md:text-sm font-medium">Attendance</p>
+                        <p className="text-md md:text-lg font-bold text-blue-600">
                           {student.attendancePercentage}%
                         </p>
                       </div>
@@ -258,10 +256,11 @@ export default function StudentManagement() {
             onClick={resetForm}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-lg p-6 max-w-md w-full mx-4"
+              initial={{ y: '100vh' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100vh' }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="bg-white rounded-t-lg md:rounded-lg p-6 max-w-md w-full h-full md:h-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">

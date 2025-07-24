@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Navigation from './components/Navigation';
+import BottomNavigation from './components/BottomNavigation';
 import AttendanceDashboard from './components/AttendanceDashboard';
 import StudentManagement from './components/StudentManagement';
 import AttendanceHistory from './components/AttendanceHistory';
@@ -24,9 +25,10 @@ function App() {
   };
 
   return (
-    <div className="App">
+    <div className="App pb-16 md:pb-0">
       <Navigation currentView={currentView} onViewChange={setCurrentView} />
-      {renderCurrentView()}
+      <main>{renderCurrentView()}</main>
+      <BottomNavigation currentView={currentView} onViewChange={setCurrentView} />
     </div>
   );
 }

@@ -194,27 +194,29 @@ export default function AttendanceHistory() {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Attendance History</h1>
-              <p className="text-sm text-gray-600 mt-1">View and analyze student attendance records</p>
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900">Attendance History</h1>
+              <p className="text-xs md:text-sm text-gray-600 mt-1">View and analyze records</p>
             </div>
             <div className="flex gap-2">
               <Button
                 variant={viewMode === 'calendar' ? 'default' : 'outline'}
                 onClick={() => setViewMode('calendar')}
+                size="sm"
               >
-                <Calendar className="h-4 w-4 mr-2" />
-                Calendar
+                <Calendar className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">Calendar</span>
               </Button>
               <Button
                 variant={viewMode === 'list' ? 'default' : 'outline'}
                 onClick={() => setViewMode('list')}
+                size="sm"
               >
-                <Filter className="h-4 w-4 mr-2" />
-                List View
+                <Filter className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">List View</span>
               </Button>
-              <Button onClick={exportData} variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                Export
+              <Button onClick={exportData} variant="outline" size="sm">
+                <Download className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">Export</span>
               </Button>
             </div>
           </div>
@@ -225,13 +227,13 @@ export default function AttendanceHistory() {
         {/* Filters */}
         <Card className="mb-6">
           <CardContent className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-1 block">Student</label>
                 <select
                   value={selectedStudent}
                   onChange={(e) => setSelectedStudent(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 >
                   <option value="all">All Students</option>
                   {students.map(student => (
@@ -250,14 +252,9 @@ export default function AttendanceHistory() {
                     placeholder="Search student..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   />
                 </div>
-              </div>
-              <div className="flex items-end">
-                <Button onClick={() => setSearchTerm('')} variant="outline" className="w-full">
-                  Clear Filters
-                </Button>
               </div>
             </div>
           </CardContent>
@@ -298,14 +295,14 @@ export default function AttendanceHistory() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} className="bg-gray-50 p-2 text-center text-sm font-medium text-gray-700">
+              <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden text-xs">
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
+                  <div key={day} className="bg-gray-50 p-2 text-center font-medium text-gray-700">
                     {day}
                   </div>
                 ))}
                 {Array.from({ length: monthDays[0].getDay() }).map((_, index) => (
-                  <div key={`empty-${index}`} className="bg-white p-2" />
+                  <div key={`empty-${index}`} className="bg-white p-1" />
                 ))}
                 {monthDays.map(day => {
                   const summary = getDaySummary(day)
@@ -320,21 +317,21 @@ export default function AttendanceHistory() {
                   return (
                     <div
                       key={day.toString()}
-                      className={`${dayBackgroundClass} p-2 min-h-20 relative ${!isSameMonth(day, currentDate) ? 'text-gray-400' : ''
+                      className={`${dayBackgroundClass} p-1 min-h-16 md:min-h-20 relative ${!isSameMonth(day, currentDate) ? 'text-gray-400' : ''
                         } ${isToday ? 'ring-2 ring-blue-500' : ''}`}
                     >
-                      <div className="text-sm font-medium mb-1">{format(day, 'd')}</div>
+                      <div className="font-medium mb-1">{format(day, 'd')}</div>
                       {summary && (
                         <div className="space-y-1">
                           {summary.singleStudent ? (
                             // Single student view - show large status indicator
-                            <div className="flex flex-col items-center justify-center h-12">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${summary.status === 'present' ? 'bg-green-500' : 'bg-red-500'
+                            <div className="flex flex-col items-center justify-center h-10">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center ${summary.status === 'present' ? 'bg-green-500' : 'bg-red-500'
                                 }`}>
                                 {summary.status === 'present' ? (
-                                  <Check className="h-4 w-4 text-white" />
+                                  <Check className="h-3 w-3 text-white" />
                                 ) : (
-                                  <X className="h-4 w-4 text-white" />
+                                  <X className="h-3 w-3 text-white" />
                                 )}
                               </div>
                               <span className={`text-xs font-medium mt-1 ${summary.status === 'present' ? 'text-green-700' : 'text-red-700'
