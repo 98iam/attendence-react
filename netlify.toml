@@ -4,8 +4,6 @@
 
 [build.environment]
   NODE_VERSION = "18"
-  REACT_APP_SUPABASE_URL = "${REACT_APP_SUPABASE_URL}"
-  REACT_APP_SUPABASE_ANON_KEY = "${REACT_APP_SUPABASE_ANON_KEY}"
 
 [[redirects]]
   from = "/*"
