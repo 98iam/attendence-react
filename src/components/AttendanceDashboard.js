@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Button } from "./ui/button"
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Check, X, AlertCircle, TrendingUp, RotateCcw, ArrowDown, ArrowUp, Loader2 } from 'lucide-react'
+import { Users, Check, X, AlertCircle, TrendingUp, Loader2 } from 'lucide-react'
 import { studentAPI, attendanceOperations } from '../lib/api-production'
 
 export default function AttendanceDashboard() {
@@ -158,7 +158,7 @@ export default function AttendanceDashboard() {
 
     const deltaY = e.clientY - dragState.startY;
     setDragState(prev => ({ ...prev, deltaY }));
-  }, [dragState.isDragging, dragState.startY]);
+  }, [dragState]);
 
   const handlePointerUp = useCallback(() => {
     if (!dragState.isDragging) return;

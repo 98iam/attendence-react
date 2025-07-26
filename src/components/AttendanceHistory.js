@@ -163,7 +163,6 @@ export default function AttendanceHistory() {
 
   const todayResults = getTodayResults()
   const todayPresent = todayResults.filter(r => r.status === 'present').length
-  const todayAbsent = todayResults.filter(r => r.status === 'absent').length
 
   // Listen for attendance completion to refresh data
   useEffect(() => {

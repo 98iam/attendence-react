@@ -256,7 +256,7 @@ export const testRLSPermissions = async () => {
     console.log('Testing RLS permissions...')
     
     // Test SELECT permission
-    const { data: selectData, error: selectError } = await supabase
+    const { error: selectError } = await supabase
       .from('students')
       .select('*')
       .limit(1)
@@ -311,7 +311,7 @@ export const testAttendanceTable = async () => {
     console.log('Testing attendance_records table...')
     
     // Test if table exists and is accessible
-    const { data: selectData, error: selectError } = await supabase
+    const { error: selectError } = await supabase
       .from('attendance_records')
       .select('*')
       .limit(1)
@@ -570,7 +570,7 @@ export const attendanceOperations = {
       // Update student statistics - but only calculate from actual unique dates
       const students = await studentAPI.getAll()
       
-      for (const [studentId, status] of Object.entries(attendanceData)) {
+      for (const [studentId] of Object.entries(attendanceData)) {
         const student = students.find(s => s.id === studentId)
         if (student) {
           // Get all attendance records for this student to calculate accurate stats
