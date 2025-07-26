@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Button } from "./ui/button"
 import { motion, AnimatePresence } from 'framer-motion'
-import { Calendar, Download, Users, Check, X, Clock, AlertCircle, TrendingUp, ChevronRight, RotateCcw, ArrowDown, ArrowUp, Loader2 } from 'lucide-react'
-import { studentAPI, attendanceOperations } from '../lib/api'
+import { Users, Check, X, AlertCircle, TrendingUp, RotateCcw, ArrowDown, ArrowUp, Loader2 } from 'lucide-react'
+import { studentAPI, attendanceOperations } from '../lib/api-production'
 
 export default function AttendanceDashboard() {
   const [students, setStudents] = useState([])
@@ -80,11 +80,7 @@ export default function AttendanceDashboard() {
 
 
 
-  const getDaysAgoText = (days) => {
-    if (days === 1) return 'Yesterday'
-    if (days === 2) return 'Day before yesterday'
-    return `${days} days ago`
-  }
+
 
   const getRiskLevel = (consecutiveAbsences) => {
     if (consecutiveAbsences >= 3) return { level: 'High Risk', color: 'text-red-600 bg-red-50' }
@@ -122,7 +118,7 @@ export default function AttendanceDashboard() {
         [swipedStudent.id]: status
       }));
 
-      console.log(`Marked ${swipedStudent.name} as ${status}`);
+
 
       return newStudents;
     });

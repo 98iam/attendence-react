@@ -4,7 +4,7 @@ import { Button } from "./ui/button"
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Edit, Trash2, User, Search, X, Loader2 } from 'lucide-react'
 import StudentProfile from './StudentProfile'
-import { studentAPI } from '../lib/api'
+import { studentAPI } from '../lib/api-production'
 
 export default function StudentManagement() {
   const [students, setStudents] = useState([])
@@ -278,10 +278,11 @@ export default function StudentManagement() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="full-name" className="block text-sm font-medium text-gray-700 mb-1">
                     Full Name *
                   </label>
                   <input
+                    id="full-name"
                     type="text"
                     required
                     value={formData.name}
@@ -292,10 +293,11 @@ export default function StudentManagement() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="roll-number" className="block text-sm font-medium text-gray-700 mb-1">
                     Roll Number *
                   </label>
                   <input
+                    id="roll-number"
                     type="text"
                     required
                     value={formData.rollNumber}
@@ -306,10 +308,11 @@ export default function StudentManagement() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="phone-number" className="block text-sm font-medium text-gray-700 mb-1">
                     Phone (Optional)
                   </label>
                   <input
+                    id="phone-number"
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}

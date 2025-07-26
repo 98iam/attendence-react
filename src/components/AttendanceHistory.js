@@ -1,17 +1,16 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Button } from "./ui/button"
-import { motion, AnimatePresence } from 'framer-motion'
-import { Calendar, ChevronLeft, ChevronRight, Download, Filter, Search, User, Clock, Check, X, Loader2 } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Download, Filter, Search, Check, X, Loader2 } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns'
-import { studentAPI, attendanceAPI } from '../lib/api'
+import { studentAPI, attendanceAPI } from '../lib/api-production'
 
 export default function AttendanceHistory() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedStudent, setSelectedStudent] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [viewMode, setViewMode] = useState('calendar')
-  const [showTodayResults, setShowTodayResults] = useState(false)
+
 
   // Real data from Supabase
   const [students, setStudents] = useState([])
@@ -166,14 +165,10 @@ export default function AttendanceHistory() {
   const todayPresent = todayResults.filter(r => r.status === 'present').length
   const todayAbsent = todayResults.filter(r => r.status === 'absent').length
 
-  // Listen for attendance completion to show results
+  // Listen for attendance completion to refresh data
   useEffect(() => {
-    const handleAttendanceComplete = (event) => {
-      setShowTodayResults(true)
-      // Auto-hide after 5 seconds
-      setTimeout(() => {
-        setShowTodayResults(false)
-      }, 5000)
+    const handleAttendanceComplete = () => {
+      loadData()
     }
 
     window.addEventListener('attendanceComplete', handleAttendanceComplete)
@@ -185,7 +180,7 @@ export default function AttendanceHistory() {
 
   const exportData = () => {
     // Export functionality would go here
-    console.log('Exporting attendance data...')
+    // Export functionality would be implemented here
   }
   return (
     <div className="min-h-screen bg-gray-50">
@@ -229,8 +224,9 @@ export default function AttendanceHistory() {
           <CardContent className="p-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">Student</label>
+                <label htmlFor="student-select" className="text-sm font-medium text-gray-700 mb-1 block">Student</label>
                 <select
+                  id="student-select"
                   value={selectedStudent}
                   onChange={(e) => setSelectedStudent(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
@@ -244,10 +240,11 @@ export default function AttendanceHistory() {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">Search</label>
+                <label htmlFor="search-input" className="text-sm font-medium text-gray-700 mb-1 block">Search</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <input
+                    id="search-input"
                     type="text"
                     placeholder="Search student..."
                     value={searchTerm}
