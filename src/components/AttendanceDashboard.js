@@ -97,11 +97,12 @@ export default function AttendanceDashboard() {
   // Attendance mode functions
   const startAttendanceMode = () => {
     // Sort students by roll number before starting attendance
+    // Reverse the array so that when we pop() from the end, we get roll number 1 first
     const sortedStudents = [...students].sort((a, b) => {
       const rollA = parseInt(a.rollNumber, 10) || 0;
       const rollB = parseInt(b.rollNumber, 10) || 0;
       return rollA - rollB;
-    });
+    }).reverse();
     setSwipeStudents(sortedStudents);
     setHistory([]);
     setAttendance({});
