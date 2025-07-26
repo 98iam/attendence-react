@@ -37,7 +37,7 @@ export default function AttendanceHistory() {
         rollNumber: student.roll_number,
         phone: student.phone || '',
         email: student.email || '',
-        attendancePercentage: student.attendance_percentage || 0,
+        attendancePercentage: parseFloat((student.attendance_percentage || 0).toFixed(2)),
         totalClasses: student.total_classes || 0,
         presentClasses: student.present_classes || 0,
         consecutiveAbsences: student.consecutive_absences || 0
