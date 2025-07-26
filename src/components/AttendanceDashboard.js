@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Button } from "./ui/button"
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Check, X, AlertCircle, TrendingUp, Loader2 } from 'lucide-react'
+import { Users, Check, X, AlertCircle, TrendingUp, Loader2, ArrowUp, ArrowDown, RotateCcw } from 'lucide-react'
 import { studentAPI, attendanceOperations } from '../lib/api-production'
 
 export default function AttendanceDashboard() {
