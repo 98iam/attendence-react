@@ -15,7 +15,7 @@ export default function StudentProfile({ student, onBack }) {
     const total = student.totalClasses || 0
     const present = student.presentClasses || 0
     const absent = total - present
-    const percentage = student.attendancePercentage || 0
+    const percentage = parseFloat((student.attendancePercentage || 0).toFixed(2))
     
     return {
       total,
