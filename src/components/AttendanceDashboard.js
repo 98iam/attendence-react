@@ -92,7 +92,7 @@ export default function AttendanceDashboard() {
 
   // Attendance mode functions
   const startAttendanceMode = () => {
-    // Sort students by roll number before starting attendance
+    // Sort students by roll number before starting attendance (ascending order)
     const sortedStudents = [...students].sort((a, b) => {
       const rollA = parseInt(a.rollNumber, 10) || 0;
       const rollB = parseInt(b.rollNumber, 10) || 0;
@@ -110,15 +110,13 @@ export default function AttendanceDashboard() {
 
     setSwipeStudents(prev => {
       const newStudents = [...prev];
-      const swipedStudent = newStudents.pop();
+      const swipedStudent = newStudents.shift(); // Get first student (lowest roll number)
 
       setHistory(prevHistory => [...prevHistory, swipedStudent]);
       setAttendance(prevAttendance => ({
         ...prevAttendance,
         [swipedStudent.id]: status
       }));
-
-
 
       return newStudents;
     });
@@ -131,7 +129,7 @@ export default function AttendanceDashboard() {
       const newHistory = [...prev];
       const lastStudent = newHistory.pop();
 
-      setSwipeStudents(prevStudents => [...prevStudents, lastStudent]);
+      setSwipeStudents(prevStudents => [lastStudent, ...prevStudents]); // Add back to beginning
       setAttendance(prev => {
         const newAttendance = { ...prev };
         delete newAttendance[lastStudent.id];
@@ -669,12 +667,12 @@ export default function AttendanceDashboard() {
                           </motion.div>
                         ) : (
                           swipeStudents.map((student, index) => {
-                            const isTopCard = index === swipeStudents.length - 1;
+                            const isTopCard = index === 0; // First student (lowest roll number) should be on top
                             const presentOpacity = Math.max(0, -dragState.deltaY / SWIPE_THRESHOLD);
                             const absentOpacity = Math.max(0, dragState.deltaY / SWIPE_THRESHOLD);
 
                             const cardStyle = {
-                              zIndex: index,
+                              zIndex: swipeStudents.length - index, // Higher z-index for earlier students
                               cursor: isTopCard ? (dragState.isDragging ? 'grabbing' : 'grab') : 'default',
                               touchAction: 'none'
                             };
@@ -687,8 +685,8 @@ export default function AttendanceDashboard() {
                                 onPointerDown={isTopCard ? handlePointerDown : undefined}
                                 initial={{ y: 50, opacity: 0 }}
                                 animate={{
-                                  y: (swipeStudents.length - 1 - index) * 10 + (isTopCard ? dragState.deltaY : 0),
-                                  scale: 1 - (swipeStudents.length - 1 - index) * 0.05,
+                                  y: index * 10 + (isTopCard ? dragState.deltaY : 0),
+                                  scale: 1 - index * 0.05,
                                   opacity: 1
                                 }}
                                 exit={{ y: -50, opacity: 0 }}

@@ -189,53 +189,139 @@ export default function StudentManagement() {
               </div>
             ) : (
               <div className="grid gap-4">
-                {filteredStudents.map((student) => (
+                {filteredStudents
+                  .sort((a, b) => {
+                    const rollA = parseInt(a.rollNumber) || 0;
+                    const rollB = parseInt(b.rollNumber) || 0;
+                    return rollA - rollB;
+                  })
+                  .map((student) => (
                   <motion.div
                     key={student.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center justify-between p-3 md:p-4 border rounded-lg hover:shadow-md transition-shadow cursor-pointer"
+                    className="border rounded-lg hover:shadow-md transition-shadow cursor-pointer"
                     onClick={() => handleStudentClick(student)}
                   >
-                    <div className="flex items-center gap-3 md:gap-4">
-                      <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-md md:text-lg font-semibold text-blue-600">
-                          {student.name.split(' ').map(n => n[0]).join('')}
-                        </span>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{student.name}</h3>
-                        <p className="text-sm text-gray-600">Roll No: {student.rollNumber}</p>
+                    {/* Mobile Layout */}
+                    <div className="block md:hidden">
+                      <div className="p-4">
+                        <div className="flex items-start gap-3 mb-4">
+                          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <span className="text-sm font-bold text-blue-600">
+                              {student.rollNumber}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-gray-900 text-base leading-tight mb-1">
+                              {student.name}
+                            </h3>
+                            <p className="text-sm text-gray-600 mb-2">Roll No: {student.rollNumber}</p>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-medium text-gray-500">Attendance:</span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                                  <div
+                                    className={`h-1.5 rounded-full ${
+                                      student.attendancePercentage >= 90 ? 'bg-green-500' :
+                                      student.attendancePercentage >= 80 ? 'bg-yellow-500' : 'bg-red-500'
+                                    }`}
+                                    style={{ width: `${student.attendancePercentage}%` }}
+                                  />
+                                </div>
+                                <span className="text-sm font-semibold text-blue-600">
+                                  {student.attendancePercentage}%
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Mobile Action Buttons */}
+                        <div className="flex gap-2 pt-3 border-t border-gray-100">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 h-9"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleEdit(student)
+                            }}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 h-9 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDelete(student.id)
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-right mr-2 md:mr-4">
-                        <p className="text-xs md:text-sm font-medium">Attendance</p>
-                        <p className="text-md md:text-lg font-bold text-blue-600">
-                          {student.attendancePercentage}%
-                        </p>
+
+                    {/* Desktop Layout */}
+                    <div className="hidden md:flex items-center justify-between p-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-lg font-semibold text-blue-600">
+                            {student.name.split(' ').map(n => n[0]).join('')}
+                          </span>
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{student.name}</h3>
+                          <p className="text-sm text-gray-600">Roll No: {student.rollNumber}</p>
+                        </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleEdit(student)
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDelete(student.id)
-                        }}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-gray-500">Attendance</p>
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 bg-gray-200 rounded-full h-2">
+                              <div
+                                className={`h-2 rounded-full ${
+                                  student.attendancePercentage >= 90 ? 'bg-green-500' :
+                                  student.attendancePercentage >= 80 ? 'bg-yellow-500' : 'bg-red-500'
+                                }`}
+                                style={{ width: `${student.attendancePercentage}%` }}
+                              />
+                            </div>
+                            <span className="text-lg font-bold text-blue-600 min-w-[3rem] text-right">
+                              {student.attendancePercentage}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleEdit(student)
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDelete(student.id)
+                            }}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </motion.div>
                 ))}
