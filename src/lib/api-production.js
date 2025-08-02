@@ -2,11 +2,27 @@ import { supabase } from './supabase'
 
 // Student Management Functions
 export const studentAPI = {
-  // Get all students
-  async getAll() {
+  // Get all active students (default behavior)
+  async getAll(includeArchived = false) {
+    let query = supabase.from('students').select('*')
+    
+    // Always filter by is_active if not including archived
+    if (!includeArchived) {
+      query = query.eq('is_active', true)
+    }
+    
+    const { data, error } = await query.order('roll_number', { ascending: true })
+    
+    if (error) throw error
+    return data || []
+  },
+
+  // Get only archived students
+  async getArchived() {
     const { data, error } = await supabase
       .from('students')
       .select('*')
+      .eq('is_active', false)
       .order('roll_number', { ascending: true })
     
     if (error) throw error
@@ -15,11 +31,17 @@ export const studentAPI = {
 
   // Create a new student
   async create(studentData) {
+    // Validate input data
+    if (!studentData.name || !studentData.rollNumber) {
+      throw new Error('Name and Roll Number are required')
+    }
+    
     const insertData = {
-      name: studentData.name,
-      roll_number: studentData.rollNumber,
-      phone: studentData.phone || null,
-      email: studentData.email || null
+      name: studentData.name.trim(),
+      roll_number: studentData.rollNumber.trim(),
+      phone: studentData.phone ? studentData.phone.trim() : null,
+      email: studentData.email ? studentData.email.trim() : null,
+      is_active: true // Default to active
     }
     
     const { data, error } = await supabase
@@ -29,7 +51,14 @@ export const studentAPI = {
       .single()
     
     if (error) {
-      throw new Error(`Failed to create student: ${error.message}`)
+      // Provide specific error messages
+      if (error.code === '23505') {
+        throw new Error(`A student with roll number "${studentData.rollNumber}" already exists`)
+      } else if (error.code === '23502') {
+        throw new Error('Missing required field. Please fill in all required information.')
+      } else {
+        throw new Error(`Failed to create student: ${error.message}`)
+      }
     }
     
     return data
@@ -54,8 +83,44 @@ export const studentAPI = {
     return data
   },
 
-  // Delete a student
-  async delete(id) {
+  // Archive a student (soft delete)
+  async archive(id, reason = 'Student left the class') {
+    const { data, error } = await supabase
+      .from('students')
+      .update({
+        is_active: false,
+        archived_at: new Date().toISOString(),
+        archived_reason: reason,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data
+  },
+
+  // Restore an archived student
+  async restore(id) {
+    const { data, error } = await supabase
+      .from('students')
+      .update({
+        is_active: true,
+        archived_at: null,
+        archived_reason: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data
+  },
+
+  // Permanently delete a student (use with caution)
+  async permanentDelete(id) {
     const { error } = await supabase
       .from('students')
       .delete()
@@ -250,5 +315,111 @@ export const attendanceOperations = {
     
     if (error) throw error
     return data || []
+  },
+
+  // Monthly transition utilities
+  async getMonthlyAttendanceSummary(year, month) {
+    const startDate = `${year}-${month.toString().padStart(2, '0')}-01`
+    const endDate = new Date(year, month, 0).toISOString().split('T')[0] // Last day of month
+    
+    const { data, error } = await supabase
+      .from('attendance_records')
+      .select(`
+        *,
+        students (
+          id,
+          name,
+          roll_number,
+          is_active
+        )
+      `)
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .order('date', { ascending: true })
+    
+    if (error) throw error
+    return data || []
+  },
+
+  // Verify data preservation after archiving
+  async verifyStudentDataPreservation(studentId) {
+    try {
+      // Get student info (even if archived)
+      const { data: student, error: studentError } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', studentId)
+        .single()
+      
+      if (studentError) throw studentError
+      
+      // Get all attendance records for this student
+      const { data: records, error: recordsError } = await supabase
+        .from('attendance_records')
+        .select('*')
+        .eq('student_id', studentId)
+        .order('date', { ascending: true })
+      
+      if (recordsError) throw recordsError
+      
+      return {
+        student: student,
+        totalRecords: records.length,
+        dateRange: records.length > 0 ? {
+          first: records[0].date,
+          last: records[records.length - 1].date
+        } : null,
+        monthlyBreakdown: records.reduce((acc, record) => {
+          const month = record.date.substring(0, 7) // YYYY-MM format
+          if (!acc[month]) {
+            acc[month] = { present: 0, absent: 0, total: 0 }
+          }
+          acc[month][record.status]++
+          acc[month].total++
+          return acc
+        }, {}),
+        isDataIntact: records.length > 0
+      }
+    } catch (error) {
+      console.error('Error verifying data preservation:', error)
+      throw error
+    }
+  },
+
+  // Bulk archive students with monthly reason
+  async bulkArchiveForMonth(studentIds, year, month, customReason = null) {
+    const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' })
+    const defaultReason = customReason || `End of ${monthName} ${year} - Class transition`
+    
+    try {
+      const results = []
+      
+      for (const studentId of studentIds) {
+        // Verify student has attendance data before archiving
+        const verification = await this.verifyStudentDataPreservation(studentId)
+        
+        if (verification.isDataIntact) {
+          const archivedStudent = await studentAPI.archive(studentId, defaultReason)
+          results.push({
+            studentId,
+            success: true,
+            student: archivedStudent,
+            dataPreserved: verification.totalRecords,
+            monthlyData: verification.monthlyBreakdown
+          })
+        } else {
+          results.push({
+            studentId,
+            success: false,
+            error: 'No attendance data found for student'
+          })
+        }
+      }
+      
+      return results
+    } catch (error) {
+      console.error('Error in bulk archive:', error)
+      throw error
+    }
   }
 }

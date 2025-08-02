@@ -9,7 +9,8 @@ export const useStudents = () => {
   const loadStudents = async () => {
     try {
       setLoading(true)
-      const data = await studentAPI.getAll()
+      // Only load active students for attendance taking
+      const data = await studentAPI.getAll(false) // false = only active students
       // Transform data to match existing component structure
       const transformedData = data.map(student => ({
         id: student.id,
@@ -20,7 +21,8 @@ export const useStudents = () => {
         attendancePercentage: parseFloat((student.attendance_percentage || 0).toFixed(2)),
         totalClasses: student.total_classes || 0,
         presentClasses: student.present_classes || 0,
-        consecutiveAbsences: student.consecutive_absences || 0
+        consecutiveAbsences: student.consecutive_absences || 0,
+        isActive: student.is_active
       }))
       setStudents(transformedData)
     } catch (error) {

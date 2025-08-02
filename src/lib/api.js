@@ -397,7 +397,8 @@ export const studentAPI = {
       name: studentData.name,
       roll_number: studentData.rollNumber,
       phone: studentData.phone || null,
-      email: studentData.email || null
+      email: studentData.email || null,
+      class_id: '28323a02-7d80-4e0e-bba9-ce24c4b138eb'
     }
     
     console.log('Insert data:', insertData)

@@ -26,7 +26,7 @@ export default function AttendanceHistory() {
     try {
       setLoading(true)
       const [studentsData, recordsData] = await Promise.all([
-        studentAPI.getAll(),
+        studentAPI.getAll(true), // true = include archived students for history viewing
         attendanceAPI.getAll()
       ])
       
@@ -40,7 +40,10 @@ export default function AttendanceHistory() {
         attendancePercentage: parseFloat((student.attendance_percentage || 0).toFixed(2)),
         totalClasses: student.total_classes || 0,
         presentClasses: student.present_classes || 0,
-        consecutiveAbsences: student.consecutive_absences || 0
+        consecutiveAbsences: student.consecutive_absences || 0,
+        isActive: student.is_active,
+        archivedAt: student.archived_at,
+        archivedReason: student.archived_reason
       }))
       
       // Transform attendance records data
@@ -231,9 +234,9 @@ export default function AttendanceHistory() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 >
                   <option value="all">All Students</option>
-                  {students.map(student => (
+                  {sortedStudents.map(student => (
                     <option key={student.id} value={student.id}>
-                      {student.name} ({student.rollNumber})
+                      {student.name} ({student.rollNumber}){!student.isActive ? ' [ARCHIVED]' : ''}
                     </option>
                   ))}
                 </select>
@@ -383,30 +386,42 @@ export default function AttendanceHistory() {
                 {attendanceRecords
                   .filter(record => selectedStudent === 'all' || record.studentId === selectedStudent)
                   .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                  .map((record) => (
-                    <div key={`${record.date}-${record.studentId}`} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                          <span className="text-sm font-semibold">
-                            {record.studentName.split(' ').map(n => n[0]).join('')}
+                  .map((record) => {
+                    const student = students.find(s => s.id === record.studentId)
+                    const isArchived = student && !student.isActive
+                    
+                    return (
+                      <div key={`${record.date}-${record.studentId}`} className={`flex items-center justify-between p-3 border rounded-lg ${isArchived ? 'bg-orange-50 border-orange-200' : ''}`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isArchived ? 'bg-orange-200' : 'bg-gray-200'}`}>
+                            <span className="text-sm font-semibold">
+                              {record.studentName.split(' ').map(n => n[0]).join('')}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{record.studentName}</p>
+                              {isArchived && (
+                                <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+                                  ARCHIVED
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600">Roll: {record.rollNumber}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-gray-600">{format(new Date(record.date), 'MMM d, yyyy')}</p>
+                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${record.status === 'present' ? 'bg-green-100 text-green-800' :
+                            'bg-red-100 text-red-800'
+                            }`}>
+                            {getStatusIcon(record.status)}
+                            {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
                           </span>
                         </div>
-                        <div>
-                          <p className="font-medium">{record.studentName}</p>
-                          <p className="text-sm text-gray-600">Roll: {record.rollNumber}</p>
-                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-600">{format(new Date(record.date), 'MMM d, yyyy')}</p>
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${record.status === 'present' ? 'bg-green-100 text-green-800' :
-                          'bg-red-100 text-red-800'
-                          }`}>
-                          {getStatusIcon(record.status)}
-                          {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
               </div>
             </CardContent>
           </Card>
