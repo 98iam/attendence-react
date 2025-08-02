@@ -10,11 +10,13 @@ export default function AttendanceHistory() {
   const [selectedStudent, setSelectedStudent] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [viewMode, setViewMode] = useState('calendar')
-
+  const [showArchivedHistory, setShowArchivedHistory] = useState(false)
 
   // Real data from Supabase
   const [students, setStudents] = useState([])
+  const [archivedStudents, setArchivedStudents] = useState([])
   const [attendanceRecords, setAttendanceRecords] = useState([])
+  const [archivedAttendanceRecords, setArchivedAttendanceRecords] = useState([])
   const [loading, setLoading] = useState(true)
 
   // Load data from Supabase
@@ -25,44 +27,102 @@ export default function AttendanceHistory() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [studentsData, recordsData] = await Promise.all([
-        studentAPI.getAll(true), // true = include archived students for history viewing
-        attendanceAPI.getAll()
-      ])
       
-      // Transform students data
-      const transformedStudents = studentsData.map(student => ({
-        id: student.id,
-        name: student.name,
-        rollNumber: student.roll_number,
-        phone: student.phone || '',
-        email: student.email || '',
-        attendancePercentage: parseFloat((student.attendance_percentage || 0).toFixed(2)),
-        totalClasses: student.total_classes || 0,
-        presentClasses: student.present_classes || 0,
-        consecutiveAbsences: student.consecutive_absences || 0,
-        isActive: student.is_active,
-        archivedAt: student.archived_at,
-        archivedReason: student.archived_reason
-      }))
-      
-      // Transform attendance records data
-      const transformedRecords = recordsData.map(record => ({
-        date: record.date,
-        status: record.status,
-        studentId: record.student_id,
-        studentName: record.students?.name || '',
-        rollNumber: record.students?.roll_number || ''
-      }))
-      
-      setStudents(transformedStudents)
-      setAttendanceRecords(transformedRecords)
+      if (showArchivedHistory) {
+        // Load archived students and their records
+        const [archivedStudentsData, allRecordsData] = await Promise.all([
+          studentAPI.getArchived(), // Only archived students
+          attendanceAPI.getAll()
+        ])
+        
+        // Transform archived students data
+        const transformedArchivedStudents = archivedStudentsData.map(student => ({
+          id: student.id,
+          name: student.name,
+          rollNumber: student.roll_number,
+          phone: student.phone || '',
+          email: student.email || '',
+          attendancePercentage: parseFloat((student.attendance_percentage || 0).toFixed(2)),
+          totalClasses: student.total_classes || 0,
+          presentClasses: student.present_classes || 0,
+          consecutiveAbsences: student.consecutive_absences || 0,
+          isActive: false,
+          archivedAt: student.archived_at,
+          archivedReason: student.archived_reason,
+          createdAt: student.created_at
+        }))
+        
+        // Transform attendance records for archived students only
+        const archivedStudentIds = transformedArchivedStudents.map(s => s.id)
+        const transformedArchivedRecords = allRecordsData
+          .filter(record => archivedStudentIds.includes(record.student_id))
+          .map(record => ({
+            date: record.date,
+            status: record.status,
+            studentId: record.student_id,
+            studentName: record.students?.name || '',
+            rollNumber: record.students?.roll_number || ''
+          }))
+        
+        setArchivedStudents(transformedArchivedStudents)
+        setArchivedAttendanceRecords(transformedArchivedRecords)
+        setStudents([]) // Clear active students when viewing archived
+        setAttendanceRecords([]) // Clear active records when viewing archived
+        
+      } else {
+        // Load active students and their records (normal mode)
+        const [studentsData, recordsData] = await Promise.all([
+          studentAPI.getAll(false), // false = only active students for regular history
+          attendanceAPI.getAll()
+        ])
+        
+        // Transform students data
+        const transformedStudents = studentsData.map(student => ({
+          id: student.id,
+          name: student.name,
+          rollNumber: student.roll_number,
+          phone: student.phone || '',
+          email: student.email || '',
+          attendancePercentage: parseFloat((student.attendance_percentage || 0).toFixed(2)),
+          totalClasses: student.total_classes || 0,
+          presentClasses: student.present_classes || 0,
+          consecutiveAbsences: student.consecutive_absences || 0,
+          isActive: student.is_active !== undefined ? student.is_active : true,
+          archivedAt: student.archived_at,
+          archivedReason: student.archived_reason,
+          createdAt: student.created_at // Important for filtering attendance by join date
+        }))
+        
+        // Transform attendance records data - only for active students
+        const activeStudentIds = transformedStudents.map(s => s.id)
+        const transformedRecords = recordsData
+          .filter(record => activeStudentIds.includes(record.student_id))
+          .map(record => {
+            return {
+              date: record.date,
+              status: record.status,
+              studentId: record.student_id,
+              studentName: record.students?.name || '',
+              rollNumber: record.students?.roll_number || ''
+            }
+          })
+        
+        setStudents(transformedStudents)
+        setAttendanceRecords(transformedRecords)
+        setArchivedStudents([]) // Clear archived students when viewing active
+        setArchivedAttendanceRecords([]) // Clear archived records when viewing active
+      }
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
       setLoading(false)
     }
   }
+
+  // Reload data when showArchivedHistory changes
+  useEffect(() => {
+    loadData()
+  }, [showArchivedHistory])
 
   // Listen for custom events when attendance is taken
   useEffect(() => {
@@ -79,13 +139,14 @@ export default function AttendanceHistory() {
 
   // Sort students by roll number for consistent ordering
   const sortedStudents = useMemo(() => {
-    return [...students].sort((a, b) => {
+    const currentStudents = showArchivedHistory ? archivedStudents : students
+    return [...currentStudents].sort((a, b) => {
       // Convert roll numbers to numbers for proper sorting
       const rollA = parseInt(a.rollNumber) || 0;
       const rollB = parseInt(b.rollNumber) || 0;
       return rollA - rollB;
     });
-  }, [students])
+  }, [students, archivedStudents, showArchivedHistory])
 
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
@@ -109,7 +170,8 @@ export default function AttendanceHistory() {
 
   const getAttendanceForDate = (date, studentId) => {
     const dateStr = format(date, 'yyyy-MM-dd')
-    const records = attendanceRecords.filter(
+    const currentRecords = showArchivedHistory ? archivedAttendanceRecords : attendanceRecords
+    const records = currentRecords.filter(
       record => record.date === dateStr && (studentId === 'all' || record.studentId === studentId)
     )
     return records
@@ -191,10 +253,38 @@ export default function AttendanceHistory() {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-xl md:text-2xl font-bold text-gray-900">Attendance History</h1>
-              <p className="text-xs md:text-sm text-gray-600 mt-1">View and analyze records</p>
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900">
+                Attendance History
+                {showArchivedHistory && (
+                  <span className="text-orange-600"> - Archived Students</span>
+                )}
+              </h1>
+              <p className="text-xs md:text-sm text-gray-600 mt-1">
+                {showArchivedHistory 
+                  ? `Viewing ${archivedStudents.length} archived students (rarely used)`
+                  : `Viewing ${students.length} active students`
+                }
+              </p>
             </div>
             <div className="flex gap-2">
+              <Button
+                variant={!showArchivedHistory ? 'default' : 'outline'}
+                onClick={() => setShowArchivedHistory(false)}
+                size="sm"
+              >
+                <span className="hidden md:inline">Active Students</span>
+                <span className="md:hidden">Active</span>
+              </Button>
+              <Button
+                variant={showArchivedHistory ? 'default' : 'outline'}
+                onClick={() => setShowArchivedHistory(true)}
+                size="sm"
+                className="text-orange-600 hover:text-orange-700 border-orange-200"
+              >
+                <span className="hidden md:inline">Archived History</span>
+                <span className="md:hidden">Archived</span>
+              </Button>
+              <div className="border-l border-gray-300 mx-2"></div>
               <Button
                 variant={viewMode === 'calendar' ? 'default' : 'outline'}
                 onClick={() => setViewMode('calendar')}
@@ -236,7 +326,8 @@ export default function AttendanceHistory() {
                   <option value="all">All Students</option>
                   {sortedStudents.map(student => (
                     <option key={student.id} value={student.id}>
-                      {student.name} ({student.rollNumber}){!student.isActive ? ' [ARCHIVED]' : ''}
+                      {student.name} ({student.rollNumber})
+                      {!showArchivedHistory && !student.isActive ? ' [ARCHIVED]' : ''}
                     </option>
                   ))}
                 </select>
@@ -383,45 +474,50 @@ export default function AttendanceHistory() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {attendanceRecords
-                  .filter(record => selectedStudent === 'all' || record.studentId === selectedStudent)
-                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                  .map((record) => {
-                    const student = students.find(s => s.id === record.studentId)
-                    const isArchived = student && !student.isActive
-                    
-                    return (
-                      <div key={`${record.date}-${record.studentId}`} className={`flex items-center justify-between p-3 border rounded-lg ${isArchived ? 'bg-orange-50 border-orange-200' : ''}`}>
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isArchived ? 'bg-orange-200' : 'bg-gray-200'}`}>
-                            <span className="text-sm font-semibold">
-                              {record.studentName.split(' ').map(n => n[0]).join('')}
+                {(() => {
+                  const currentRecords = showArchivedHistory ? archivedAttendanceRecords : attendanceRecords
+                  const currentStudentsList = showArchivedHistory ? archivedStudents : students
+                  
+                  return currentRecords
+                    .filter(record => selectedStudent === 'all' || record.studentId === selectedStudent)
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .map((record) => {
+                      const student = currentStudentsList.find(s => s.id === record.studentId)
+                      const isArchived = showArchivedHistory || (student && !student.isActive)
+                      
+                      return (
+                        <div key={`${record.date}-${record.studentId}`} className={`flex items-center justify-between p-3 border rounded-lg ${isArchived ? 'bg-orange-50 border-orange-200' : ''}`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isArchived ? 'bg-orange-200' : 'bg-gray-200'}`}>
+                              <span className="text-sm font-semibold">
+                                {record.studentName.split(' ').map(n => n[0]).join('')}
+                              </span>
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">{record.studentName}</p>
+                                {isArchived && (
+                                  <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+                                    ARCHIVED
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600">Roll: {record.rollNumber}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-gray-600">{format(new Date(record.date), 'MMM d, yyyy')}</p>
+                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${record.status === 'present' ? 'bg-green-100 text-green-800' :
+                              'bg-red-100 text-red-800'
+                              }`}>
+                              {getStatusIcon(record.status)}
+                              {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
                             </span>
                           </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium">{record.studentName}</p>
-                              {isArchived && (
-                                <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
-                                  ARCHIVED
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-sm text-gray-600">Roll: {record.rollNumber}</p>
-                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm text-gray-600">{format(new Date(record.date), 'MMM d, yyyy')}</p>
-                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${record.status === 'present' ? 'bg-green-100 text-green-800' :
-                            'bg-red-100 text-red-800'
-                            }`}>
-                            {getStatusIcon(record.status)}
-                            {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  })}
+                      )
+                    })
+                })()}
               </div>
             </CardContent>
           </Card>
